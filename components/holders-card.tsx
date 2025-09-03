@@ -16,7 +16,7 @@ export function HoldersCard({ data }: HoldersCardProps) {
         <CardTitle className="text-sm font-medium">Holders</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-32">
+        <div className="h-24">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} layout="horizontal">
               <XAxis type="number" hide />

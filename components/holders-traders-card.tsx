@@ -1,91 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardHeader } from "@/components/ui/card"
+import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Copy, Star } from "lucide-react"
+import { Copy, ExternalLink, Star } from "lucide-react"
 import { TokenDataService } from "@/lib/token-data-service"
-import { getUpdateRate } from "@/lib/config/api-config"
-import type { TokenHolder, TraderData } from "@/lib/types"
-
-const mockHolders = [
-  { rank: 1, address: "6pM...xFbL", percentage: 4.92, amount: "49.2M", total: "999.9M", value: "$118.1K" },
-  { rank: 2, address: "Ep6...2gF5", percentage: 2.89, amount: "28.9M", total: "999.9M", value: "$69.4K" },
-  { rank: 3, address: "8vm...jhkC", percentage: 1.94, amount: "19.4M", total: "999.9M", value: "$46.7K" },
-  { rank: 4, address: "63A...qCzw", percentage: 1.67, amount: "16.7M", total: "999.9M", value: "$40.2K" },
-  { rank: 5, address: "B85...AhjB", percentage: 1.27, amount: "12.7M", total: "999.9M", value: "$30.6K" },
-  { rank: 6, address: "ALE...MviC", percentage: 1.09, amount: "10.9M", total: "999.9M", value: "$26.3K" },
-  { rank: 7, address: "5HM...CUdX", percentage: 1.01, amount: "10.1M", total: "999.9M", value: "$24.2K" },
-  { rank: 8, address: "6Yt...zoxG", percentage: 0.95, amount: "9.5M", total: "999.9M", value: "$22.7K" },
-]
-
-const mockTraders = [
-  {
-    rank: 1,
-    trader: "DCjuur...Ljbi",
-    bought: "$2,197.02",
-    boughtTokens: "19.79M",
-    boughtTx: "4 tx",
-    sold: "$14.2K",
-    soldTokens: "19.79M",
-    soldTx: "2 tx",
-    pnl: "$12K",
-    pnlPercent: "+547%",
-    balance: "19.8M",
-  },
-  {
-    rank: 2,
-    trader: "6Tvwam...3vzZ",
-    bought: "$1,145.21",
-    boughtTokens: "9.482M",
-    boughtTx: "3 tx",
-    sold: "$10K",
-    soldTokens: "9.482M",
-    soldTx: "3 tx",
-    pnl: "$8,887.38",
-    pnlPercent: "+776%",
-    balance: "9.48M",
-  },
-  {
-    rank: 3,
-    trader: "Ca3pTj...ZL2R",
-    bought: "$1,432.74",
-    boughtTokens: "18.97M",
-    boughtTx: "2 tx",
-    sold: "$9,400.84",
-    soldTokens: "8.889M",
-    soldTx: "6 tx",
-    pnl: "$8,729.52",
-    pnlPercent: "+131%",
-    balance: "19M",
-  },
-  {
-    rank: 4,
-    trader: "3K4mKD...KBVg",
-    bought: "$460.19",
-    boughtTokens: "28.52M",
-    boughtTx: "1 tx",
-    sold: "$8,584.15",
-    soldTokens: "28.52M",
-    soldTx: "6 tx",
-    pnl: "$8,123.96",
-    pnlPercent: "+177%",
-    balance: "28.5M",
-  },
-  {
-    rank: 5,
-    trader: "GHH3Rk...wG9D",
-    bought: "$1,624.46",
-    boughtTokens: "9.531M",
-    boughtTx: "5 tx",
-    sold: "$8,713.52",
-    soldTokens: "8.531M",
-    soldTx: "8 tx",
-    pnl: "$7,259.50",
-    pnlPercent: "+499%",
-    balance: "9.53M",
-  },
-]
+import type { TokenHolder, TraderData, TokenTransaction } from "@/lib/types"
+import { BirdeyeAPI } from "@/lib/apis/birdeye"
+import { debounce } from "@/lib/utils/api-utils"
 
 interface HoldersTradersCardProps {
   tokenAddress?: string
@@ -93,74 +14,148 @@ interface HoldersTradersCardProps {
 }
 
 export function HoldersTradersCard({ tokenAddress, network = "solana" }: HoldersTradersCardProps = {}) {
-  const [activeTab, setActiveTab] = useState("holders")
-  const [holders, setHolders] = useState<TokenHolder[]>([])
+  console.log('🔍 [HoldersTradersCard] Component rendered with tokenAddress:', tokenAddress, 'network:', network)
+  
+  const [activeTab, setActiveTab] = useState("transactions")
   const [traders, setTraders] = useState<TraderData[]>([])
-  const [isLoadingHolders, setIsLoadingHolders] = useState(false)
+  const [transactions, setTransactions] = useState<TokenTransaction[]>([])
+  const [holders, setHolders] = useState<TokenHolder[]>([])
   const [isLoadingTraders, setIsLoadingTraders] = useState(false)
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
+  const [isLoadingHolders, setIsLoadingHolders] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Date.now())
+
+  // Create debounced fetch functions
+  const debouncedFetchTraders = useCallback(
+    debounce(async (tokenAddr: string) => {
+      try {
+        const tradersData = await TokenDataService.getTopTraders(tokenAddr)
+        setTraders(tradersData)
+      } catch (error) {
+        setTraders([])
+      }
+    }, 600),
+    []
+  )
+
+  const debouncedFetchTransactions = useCallback(
+    debounce(async (tokenAddr: string) => {
+      try {
+        console.log('[Transactions] Fetching from Birdeye API for token:', tokenAddr)
+        const rawTransactions = await BirdeyeAPI.getTokenTransactions(tokenAddr, 30)
+        
+        // Parse Birdeye transactions to TokenTransaction format
+        const parsedTransactions: TokenTransaction[] = rawTransactions.map((tx: any) => {
+          // Determine if it's a buy or sell based on tx_type or side
+          const isSell = tx.tx_type === 'sell' || tx.side === 'sell'
+          
+          // For token amount, use the PENGU token amount (to.ui_amount for buys, from.ui_amount for sells)
+          const tokenAmount = isSell 
+            ? tx.from?.ui_amount || 0  // PENGU being sold
+            : tx.to?.ui_amount || 0    // PENGU being bought
+          
+          // For price per token, use volume_usd / volume (volume is the token amount)
+          const pricePerToken = tx.volume && tx.volume > 0 
+            ? tx.volume_usd / tx.volume 
+            : 0
+          
+          return {
+            time: tx.block_unix_time * 1000 || Date.now(), // Convert to milliseconds
+            type: isSell ? 'SELL' : 'BUY',
+            amount: tokenAmount,
+            pricePerToken: pricePerToken, 
+            usdValue: tx.volume_usd || 0,
+            trader: tx.owner || '—',
+            txSignature: tx.tx_hash || '',
+            dex: tx.source || 'Unknown',
+            isRealTime: false
+          }
+        })
+
+        console.log(`[Transactions] Loaded ${parsedTransactions.length} transactions`)
+        setTransactions(parsedTransactions)
+      } catch (error) {
+        console.error('Failed to fetch transactions:', error)
+        setTransactions([])
+      }
+    }, 600),
+    []
+  )
+
+  const debouncedFetchHolders = useCallback(
+    debounce(async (tokenAddr: string) => {
+      try {
+        console.log('[Holders] Fetching top 20 holders for token:', tokenAddr)
+        const holdersData = await TokenDataService.getTokenLargestAccounts(tokenAddr, network)
+        setHolders(holdersData)
+        console.log(`[Holders] Loaded ${holdersData.length} holders`)
+      } catch (error) {
+        console.error('Failed to fetch holders:', error)
+        setHolders([])
+      }
+    }, 600),
+    [network]
+  )
+
+  // Fetch traders data - Load immediately on mount for better UX
+  useEffect(() => {
+    if (!tokenAddress) {
+      setTraders([])
+      return
+    }
+
+    console.log('HoldersTradersCard: Starting traders fetch for', tokenAddress)
+    setIsLoadingTraders(true)
+    debouncedFetchTraders(tokenAddress)
+      .finally(() => {
+        setIsLoadingTraders(false)
+        console.log('HoldersTradersCard: Traders fetch completed')
+      })
+
+  }, [tokenAddress, debouncedFetchTraders])
+
+  // Fetch transactions data using Birdeye API
+  useEffect(() => {
+    if (!tokenAddress || network !== 'solana') {
+      setTransactions([])
+      return
+    }
+
+    console.log('HoldersTradersCard: Starting transactions fetch for', tokenAddress)
+    setIsLoadingTransactions(true)
+    debouncedFetchTransactions(tokenAddress)
+      .finally(() => {
+        setIsLoadingTransactions(false)
+        console.log('HoldersTradersCard: Transactions fetch completed')
+      })
+
+  }, [tokenAddress, network, debouncedFetchTransactions])
 
   // Fetch holders data
   useEffect(() => {
-    console.log('HoldersTradersCard: tokenAddress =', tokenAddress, 'network =', network)
-    if (!tokenAddress) return
-
-    const fetchHolders = async (showLoading = true) => {
-      console.log('HoldersTradersCard: Starting to fetch holders for', tokenAddress, 'on', network)
-      if (showLoading) {
-        setIsLoadingHolders(true)
-      }
-      try {
-        const holdersData = await TokenDataService.getTokenHolders(tokenAddress, network, 20)
-        console.log('HoldersTradersCard: Received holders data:', holdersData)
-        setHolders(holdersData)
-      } catch (error) {
-        console.error('Failed to fetch holders:', error)
-        if (showLoading) {
-          setHolders([])
-        }
-      } finally {
-        if (showLoading) {
-          setIsLoadingHolders(false)
-        }
-      }
+    if (!tokenAddress || network !== 'solana') {
+      setHolders([])
+      return
     }
 
-    fetchHolders(true) // Show loading on initial fetch
+    console.log('HoldersTradersCard: Starting holders fetch for', tokenAddress)
+    setIsLoadingHolders(true)
+    debouncedFetchHolders(tokenAddress)
+      .finally(() => {
+        setIsLoadingHolders(false)
+        console.log('HoldersTradersCard: Holders fetch completed')
+      })
 
-    // Auto-refresh holders data silently (no loading state)
-    const interval = setInterval(() => fetchHolders(false), getUpdateRate())
-    return () => clearInterval(interval)
-  }, [tokenAddress, network])
+  }, [tokenAddress, network, debouncedFetchHolders])
 
-  // Fetch traders data
+  // Update time every second for live time calculations
   useEffect(() => {
-    if (!tokenAddress) return
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
 
-    const fetchTraders = async (showLoading = true) => {
-      if (showLoading) {
-        setIsLoadingTraders(true)
-      }
-      try {
-        const tradersData = await TokenDataService.getTopTraders(tokenAddress)
-        setTraders(tradersData)
-      } catch (error) {
-        console.error('Failed to fetch traders:', error)
-        if (showLoading) {
-          setTraders([])
-        }
-      } finally {
-        if (showLoading) {
-          setIsLoadingTraders(false)
-        }
-      }
-    }
-
-    fetchTraders(true) // Show loading on initial fetch
-
-    // Auto-refresh traders data silently (no loading state)
-    const interval = setInterval(() => fetchTraders(false), getUpdateRate())
     return () => clearInterval(interval)
-  }, [tokenAddress])
+  }, [])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -172,129 +167,203 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
     return `$${value.toFixed(0)}`
   }
 
-  const formatAmount = (amount: string) => {
-    const num = parseFloat(amount)
-    if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-    return num.toFixed(0)
-  }
-
   const formatAddress = (address: string) => {
     if (address.length <= 8) return address
     return `${address.slice(0, 3)}...${address.slice(-4)}`
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="holders">Top Holders</TabsTrigger>
-            <TabsTrigger value="traders">Top Traders</TabsTrigger>
+    <div className="h-full bg-card text-card-foreground rounded-sm border shadow-sm flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+        <div className="flex-shrink-0 p-3 pb-1">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            <TabsTrigger value="traders">Traders</TabsTrigger>
+            <TabsTrigger value="holders">Holders</TabsTrigger>
           </TabsList>
+        </div>
 
-          <TabsContent value="holders" className="mt-4">
-            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2 holders-scrollbar">
-              <div className="grid grid-cols-5 gap-4 text-xs text-muted-foreground font-medium pb-2 border-b border-border">
-                <div>RANK</div>
-                <div>ADDRESS</div>
-                <div>%</div>
-                <div>AMOUNT</div>
-                <div>VALUE</div>
+        <TabsContent value="transactions" className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 space-y-0.5 overflow-y-auto overflow-x-auto p-3 pr-2 custom-scrollbar min-h-0 min-w-0">
+            <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground font-medium pb-1 border-b border-border sticky top-0 bg-card min-w-full">
+              <div>TIME</div>
+              <div>TYPE</div>
+              <div>AMOUNT</div>
+              <div>PRICE</div>
+              <div>USD</div>
+              <div>TRADER</div>
+              <div className="text-right">TXN</div>
+            </div>
+            {isLoadingTransactions ? (
+              <div className="text-center text-muted-foreground text-xs py-4">
+                Loading transactions...
               </div>
-
-              {isLoadingHolders ? (
-                <div className="text-center text-muted-foreground text-xs py-4">
-                  Loading holders...
-                </div>
-              ) : holders.length > 0 ? (
-                holders.map((holder) => (
-                  <div key={holder.rank} className="grid grid-cols-5 gap-4 text-xs py-2 hover:bg-muted/50 rounded-sm">
-                    <div className="text-muted-foreground">#{holder.rank}</div>
+            ) : transactions.length > 0 ? (
+              transactions.map((tx, index) => {
+                const uniqueKey = `tx-${tx.txSignature}-${index}`
+                const timeAgo = Math.round((currentTime - tx.time) / 1000)
+                const timeString = timeAgo < 60 ? `${timeAgo}s` : 
+                                 timeAgo < 3600 ? `${Math.round(timeAgo/60)}m` :
+                                 `${Math.round(timeAgo/3600)}h`
+                
+                const isBuy = tx.type === 'BUY'
+                const colorClass = isBuy ? 'text-green-400' : 'text-red-400'
+                
+                return (
+                  <div key={uniqueKey} className="grid grid-cols-7 gap-2 text-xs py-1 hover:bg-muted/50 rounded-sm">
+                    <div className="text-muted-foreground">{timeString} ago</div>
+                    <div className={`font-medium ${colorClass}`}>
+                      {tx.type}
+                    </div>
+                    <div className={`font-medium ${colorClass}`}>{formatValue(tx.amount)}</div>
+                    <div className={`font-medium ${colorClass}`}>${(tx.pricePerToken || 0).toFixed(4)}</div>
+                    <div className={`font-medium ${colorClass}`}>${(tx.usdValue || 0).toFixed(2)}</div>
                     <div className="flex items-center gap-1">
-                      <span className="font-mono">{formatAddress(holder.address)}</span>
+                      <span className="font-mono text-xs">{formatAddress(tx.trader)}</span>
                       <Copy
                         className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-pointer"
-                        onClick={() => copyToClipboard(holder.address)}
+                        onClick={() => copyToClipboard(tx.trader)}
                       />
                     </div>
-                    <div className="font-medium">{holder.percentage.toFixed(2)}%</div>
-                    <div className="space-y-1">
-                      <div className="font-medium">{holder.amount}</div>
-                      <div className="w-full bg-muted rounded-full h-1">
-                        <div className="bg-yellow-500 h-1 rounded-full" style={{ width: `${Math.min(holder.percentage * 20, 100)}%` }} />
-                      </div>
+                    <div className="flex items-center justify-end">
+                      <a
+                        href={`https://solscan.io/tx/${tx.txSignature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
-                    <div className="font-medium text-green-400">{formatValue(holder.value)}</div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground text-xs py-4">
-                  {tokenAddress ? 'No holder data available' : 'Select a token to view holders'}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="traders" className="mt-4">
-            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2 holders-scrollbar">
-              <div className="grid grid-cols-5 gap-2 text-xs text-muted-foreground font-medium pb-2 border-b border-border">
-                <div>Trader</div>
-                <div>Bought</div>
-                <div>Sold</div>
-                <div>PnL</div>
-                <div>Balance</div>
+                )
+              })
+            ) : (
+              <div className="text-center text-muted-foreground text-xs py-4">
+                {tokenAddress ? 'No transaction data available' : 'Select a token to view transactions'}
               </div>
+            )}
+          </div>
+        </TabsContent>
 
-              {isLoadingTraders ? (
-                <div className="text-center text-muted-foreground text-xs py-4">
-                  Loading traders...
-                </div>
-              ) : traders.length > 0 ? (
-                traders.map((trader) => (
-                  <div key={trader.rank} className="grid grid-cols-5 gap-2 text-xs py-2 hover:bg-muted/50 rounded-sm">
+        <TabsContent value="traders" className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 space-y-0.5 overflow-y-auto p-3 pr-2 custom-scrollbar min-h-0">
+            <div className="grid grid-cols-5 text-xs text-muted-foreground font-medium pb-1 border-b border-border sticky top-0 bg-card" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1fr auto' }}>
+              <div>TRADER</div>
+              <div>BUY VOL</div>
+              <div>SELL VOL</div>
+              <div>TOTAL VOL</div>
+              <div className="text-right">BALANCE</div>
+            </div>
+            {isLoadingTraders ? (
+              <div className="text-center text-muted-foreground text-xs py-4">
+                Loading traders...
+              </div>
+            ) : traders.length > 0 ? (
+              traders.map((trader, index) => {
+                // Create a unique key combining trader address and rank to prevent duplicates
+                const uniqueKey = `trader-${trader.trader}-${trader.rank}-${index}`
+                
+                return (
+                  <div key={uniqueKey} className="grid grid-cols-5 text-xs py-1 hover:bg-muted/50 rounded-sm" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1fr auto' }}>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">#{trader.rank}</span>
-                      <Star className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-mono">{trader.trader}</span>
+                      <span className="font-mono text-xs">{formatAddress(trader.trader)}</span>
                       <Copy
                         className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-pointer"
                         onClick={() => copyToClipboard(trader.trader)}
                       />
                     </div>
                     <div>
-                      <div className="font-medium">{trader.bought}</div>
-                      <div className="text-muted-foreground">
-                        {trader.boughtTokens} {trader.boughtTx}
+                      <div className="font-medium text-green-400">{trader.bought}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {trader.boughtTx}
                       </div>
                     </div>
                     <div>
-                      <div className="font-medium">{trader.sold}</div>
-                      <div className="text-muted-foreground">
-                        {trader.soldTokens} {trader.soldTx}
+                      <div className="font-medium text-red-400">{trader.sold}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {trader.soldTx}
                       </div>
                     </div>
                     <div>
-                      <div className={`font-medium ${trader.pnl.startsWith('$-') ? 'text-red-400' : 'text-green-400'}`}>
+                      <div className="font-medium">
                         {trader.pnl}
                       </div>
-                      <div className={trader.pnlPercent.startsWith('+') ? 'text-green-400' : 'text-red-400'}>
-                        {trader.pnlPercent}
+                    </div>
+                    <div className="font-medium text-right">{trader.pnlPercent}</div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="text-center text-muted-foreground text-xs py-4">
+                {tokenAddress ? 'No trader data available' : 'Select a token to view traders'}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="holders" className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 space-y-0.5 overflow-y-auto p-3 custom-scrollbar min-h-0">
+            <div className="grid text-xs text-muted-foreground font-medium pb-1 border-b border-border sticky top-0 bg-card" style={{ gridTemplateColumns: '2.5fr 100px 1.8fr 1fr' }}>
+              <div># Address</div>
+              <div>%</div>
+              <div>Amount</div>
+              <div className="text-right">Value (USD)</div>
+            </div>
+            {isLoadingHolders ? (
+              <div className="text-center text-muted-foreground text-xs py-4">
+                Loading holders...
+              </div>
+            ) : holders.length > 0 ? (
+              holders.map((holder, index) => {
+                const uniqueKey = `holder-${holder.address}-${index}`
+                
+                return (
+                  <div key={uniqueKey} className="grid text-xs py-2 hover:bg-muted/50 rounded-sm" style={{ gridTemplateColumns: '2.5fr 100px 1.8fr 1fr' }}>
+                    {/* # Address Column */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">{index + 1}</span>
+                      <span className="font-mono text-xs">{formatAddress(holder.address)}</span>
+                      <Copy
+                        className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-pointer"
+                        onClick={() => copyToClipboard(holder.address)}
+                      />
+                    </div>
+                    
+                    {/* % Column */}
+                    <div className="font-medium">{holder.percentage.toFixed(2)}%</div>
+                    
+                    {/* Amount Column with Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="font-medium">{holder.amount}</div>
+                      <div className="w-full bg-muted rounded-full h-1">
+                        <div 
+                          className="bg-yellow-400 h-1 rounded-full transition-all duration-300" 
+                          style={{ width: `${Math.min(holder.percentage, 100)}%` }}
+                        />
                       </div>
                     </div>
-                    <div className="font-medium">{trader.balance}</div>
+                    
+                    {/* Value Column */}
+                    <div className="font-medium text-right">
+                      ${typeof holder.value === 'number' ? 
+                        holder.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 
+                        holder.value
+                      }
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground text-xs py-4">
-                  {tokenAddress ? 'No trader data available' : 'Select a token to view traders'}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardHeader>
-    </Card>
+                )
+              })
+            ) : (
+              <div className="text-center text-muted-foreground text-xs py-4">
+                {tokenAddress ? 'No holder data available' : 'Select a token to view holders'}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+      </Tabs>
+    </div>
   )
 }

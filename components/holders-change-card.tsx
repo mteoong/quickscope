@@ -16,7 +16,7 @@ export function HoldersChangeCard({ data }: HoldersChangeCardProps) {
         <CardTitle className="text-sm font-medium">Holders Change — last 5 days</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-32">
+        <div className="h-24">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
               <XAxis

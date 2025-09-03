@@ -16,7 +16,7 @@ export function PriceCard({ data }: PriceCardProps) {
         <CardTitle className="text-sm font-medium">Price — last 15 days</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-32">
+        <div className="h-24">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <XAxis

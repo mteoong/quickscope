@@ -54,6 +54,20 @@ export interface TokenSecurity {
   canBurn: boolean
   isProxy: boolean
   hasRenounced: boolean
+  
+  // Additional GoPlus specific fields
+  canSell?: boolean
+  isMintable?: boolean
+  isFreezable?: boolean
+  transferPausable?: boolean
+  canTakeBackOwnership?: boolean
+  hiddenOwner?: boolean
+  externalCall?: boolean
+  gasAbuse?: boolean
+  supply?: string
+  decimals?: number
+  mintAuthority?: string | null
+  freezeAuthority?: string | null
 }
 
 export interface TokenSocials {
@@ -174,4 +188,107 @@ export interface TraderData {
   pnl: string
   pnlPercent: string
   balance: string
+}
+
+
+export interface WalletTransactionResponse {
+  success: boolean
+  data: {
+    items: Array<{
+      txHash: string
+      blockTime: number
+      side: 'buy' | 'sell'
+      tokenAmount: number
+      quoteAmount: number
+      price: number
+      fee?: number
+      source?: string
+    }>
+    hasNext: boolean
+  }
+}
+
+export interface TokenTransaction {
+  time: number
+  type: 'BUY' | 'SELL'
+  amount: number
+  pricePerToken: number
+  usdValue: number
+  trader: string
+  txSignature: string
+  source?: string
+  dex?: string
+  isRealTime?: boolean
+}
+
+export interface WebSocketConnectionStatus {
+  status: 'connecting' | 'connected' | 'disconnected' | 'error'
+  reconnectAttempts?: number
+  subscriptionId?: number | null
+}
+
+export interface HeliusTransaction {
+  accountData: Array<{
+    account: string
+    nativeBalanceChange: number
+    tokenBalanceChanges: Array<{
+      mint: string
+      rawTokenAmount: {
+        tokenAmount: string
+        decimals: number
+      }
+      tokenAccount: string
+      userAccount: string
+    }>
+  }>
+  description: string
+  events: {
+    swap?: {
+      innerSwaps: Array<{
+        programInfo: {
+          source: string
+          account: string
+          programName: string
+          instructionName: string
+        }
+        tokenInputs: Array<{
+          mint: string
+          rawTokenAmount: {
+            tokenAmount: string
+            decimals: number
+          }
+          tokenAccount: string
+          userAccount: string
+        }>
+        tokenOutputs: Array<{
+          mint: string
+          rawTokenAmount: {
+            tokenAmount: string
+            decimals: number
+          }
+          tokenAccount: string
+          userAccount: string
+        }>
+      }>
+    }
+  }
+  fee: number
+  feePayer: string
+  instructions: Array<any>
+  nativeTransfers: Array<any>
+  signature: string
+  slot: number
+  source: string
+  timestamp: number
+  tokenTransfers: Array<{
+    fromTokenAccount: string
+    fromUserAccount: string
+    mint: string
+    toTokenAccount: string
+    toUserAccount: string
+    tokenAmount: number
+    tokenStandard: string
+  }>
+  transactionError: null | string
+  type: string
 }

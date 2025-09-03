@@ -13,7 +13,7 @@ export function LiquidityCard({}: LiquidityCardProps) {
         <CardTitle className="text-sm font-medium">Liquidity — last 15 days</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-32">
+        <div className="h-24">
           <img
             src="/liquidity-bar-chart-with-golden-bars-showing-liqui.png"
             alt="Liquidity Chart"

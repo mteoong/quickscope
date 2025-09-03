@@ -54,68 +54,59 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
       {/* Basic Token Info */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-xs text-muted-foreground">Pair Created</span>
+          <span className="text-xs text-muted-foreground">Market Cap</span>
           <span className="text-xs text-foreground">
-            {formatDate(tokenData?.pairCreated || primaryPool?.pairCreated)}
+            {formatNumber(tokenData?.marketCap)}
           </span>
         </div>
         
         <div className="flex justify-between items-center">
-          <span className="text-xs text-muted-foreground">Token Creator</span>
-          <span className="text-xs text-foreground">{tokenData?.creator || "—"}</span>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-muted-foreground">Total Supply</span>
+          <span className="text-xs text-muted-foreground">Token Supply</span>
           <span className="text-xs text-foreground">{formatSupply(tokenData?.totalSupply)}</span>
         </div>
         
         <div className="flex justify-between items-center">
-          <span className="text-xs text-muted-foreground">Holders</span>
-          <span className="text-xs text-foreground">
-            {tokenData?.holderCount ? formatNumber(tokenData.holderCount) : "—"}
-          </span>
-        </div>
-      </div>
-
-      {/* Token Address */}
-      <div className="pt-2 border-t border-border">
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-muted-foreground">Token Address</span>
+          <span className="text-xs text-muted-foreground">Token Creator</span>
           <div className="flex items-center gap-1">
             <span className="text-xs text-foreground font-mono">
-              {selectedTokenAddress ? 
-                `${selectedTokenAddress.slice(0, 6)}...${selectedTokenAddress.slice(-4)}` : 
+              {tokenData?.creator ? 
+                `${tokenData.creator.slice(0, 6)}...${tokenData.creator.slice(-4)}` : 
                 "—"
               }
             </span>
-            {selectedTokenAddress && (
-              <button onClick={() => copyToClipboard(selectedTokenAddress)} className="p-1 hover:bg-muted rounded transition-colors">
+            {tokenData?.creator && (
+              <button onClick={() => copyToClipboard(tokenData.creator)} className="p-1 hover:bg-muted rounded transition-colors">
                 <Copy className="h-3 w-3 text-muted-foreground" />
               </button>
             )}
           </div>
         </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-muted-foreground">Pair Created</span>
+          <span className="text-xs text-foreground">
+            {formatDate(tokenData?.pairCreated || primaryPool?.pairCreated)}
+          </span>
+        </div>
       </div>
 
-      {/* Pooled Assets */}
-      {primaryPool && (
-        <div className="space-y-2 pt-2 border-t border-border">
+      {/* Separator */}
+      <div className="border-t border-border"></div>
+
+      {/* Pool Information */}
+      {primaryPool ? (
+        <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">
-              Pooled {primaryPool.baseToken.symbol}
-            </span>
+            <span className="text-xs text-muted-foreground">Pooled Token</span>
             <span className="text-xs text-foreground">
-              {formatNumber(parseFloat(primaryPool.baseToken.amount))}
+              {formatNumber(parseFloat(primaryPool.baseToken.amount))} {primaryPool.baseToken.symbol}
             </span>
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">
-              Pooled {primaryPool.quoteToken.symbol}
-            </span>
+            <span className="text-xs text-muted-foreground">Pooled Token Pair</span>
             <span className="text-xs text-foreground">
-              {formatNumber(parseFloat(primaryPool.quoteToken.amount))}
+              {formatNumber(parseFloat(primaryPool.quoteToken.amount))} {primaryPool.quoteToken.symbol}
             </span>
           </div>
           
@@ -129,6 +120,79 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
                 <Copy className="h-3 w-3 text-muted-foreground" />
               </button>
             </div>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Token Address</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-foreground font-mono">
+                {selectedTokenAddress ? 
+                  `${selectedTokenAddress.slice(0, 6)}...${selectedTokenAddress.slice(-4)}` : 
+                  "—"
+                }
+              </span>
+              {selectedTokenAddress && (
+                <button onClick={() => copyToClipboard(selectedTokenAddress)} className="p-1 hover:bg-muted rounded transition-colors">
+                  <Copy className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Token Pair Address</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-foreground font-mono">
+                {primaryPool.quoteToken.address ? 
+                  `${primaryPool.quoteToken.address.slice(0, 6)}...${primaryPool.quoteToken.address.slice(-4)}` : 
+                  "—"
+                }
+              </span>
+              {primaryPool.quoteToken.address && (
+                <button onClick={() => copyToClipboard(primaryPool.quoteToken.address)} className="p-1 hover:bg-muted rounded transition-colors">
+                  <Copy className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Pooled Token</span>
+            <span className="text-xs text-foreground">—</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Pooled Token Pair</span>
+            <span className="text-xs text-foreground">—</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Pair Address</span>
+            <span className="text-xs text-foreground">—</span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Token Address</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-foreground font-mono">
+                {selectedTokenAddress ? 
+                  `${selectedTokenAddress.slice(0, 6)}...${selectedTokenAddress.slice(-4)}` : 
+                  "—"
+                }
+              </span>
+              {selectedTokenAddress && (
+                <button onClick={() => copyToClipboard(selectedTokenAddress)} className="p-1 hover:bg-muted rounded transition-colors">
+                  <Copy className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Token Pair Address</span>
+            <span className="text-xs text-foreground">—</span>
           </div>
         </div>
       )}

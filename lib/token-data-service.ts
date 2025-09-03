@@ -3,17 +3,20 @@ import { GoPlusAPI } from './apis/goplus'
 import { DexScreenerAPI } from './apis/dexscreener'
 import { HeliusAPI } from './apis/helius'
 import { TrendingAPI } from './apis/trending'
-import { getUpdateRate } from './config/api-config'
+import { BirdeyeAPI } from './apis/birdeye'
+// import { getUpdateRate } from './config/api-config' // Commented out for debugging
 
 export class TokenDataService {
   private static cache = new Map<string, { data: TokenData; expires: number }>()
-  private static readonly CACHE_DURATION = 3 * 1000 // 3 seconds for real-time updates
+  private static readonly CACHE_DURATION = 3 * 60 * 1000 // 3 minutes
 
   static async getTokenData(address: string, network: string = 'solana'): Promise<TokenData> {
     // Check cache first
     const cacheKey = `${address}-${network}`
     const cached = this.cache.get(cacheKey)
+    console.log('TokenDataService: Cache check for', cacheKey, 'cached:', !!cached, 'expired:', cached ? cached.expires <= Date.now() : 'N/A')
     if (cached && cached.expires > Date.now()) {
+      console.log('TokenDataService: Returning cached data for', address)
       return cached.data
     }
 
@@ -50,7 +53,7 @@ export class TokenDataService {
       // Fetch data from multiple sources in parallel
       const [dexScreenerData, goPlusData, heliusData] = await Promise.allSettled([
         DexScreenerAPI.getTokenData(address),
-        GoPlusAPI.getTokenSecurity(address, network),
+        network === 'solana' ? GoPlusAPI.getSolanaTokenSecurity(address) : Promise.resolve(null),
         network === 'solana' ? HeliusAPI.getTokenMetadata(address) : Promise.resolve(null)
       ])
 
@@ -77,13 +80,30 @@ export class TokenDataService {
 
       // Process GoPlus security data
       if (goPlusData.status === 'fulfilled' && goPlusData.value) {
+        console.log('TokenDataService: GoPlus raw response for', address, ':', goPlusData.value)
         const parsedSecurityData = GoPlusAPI.parseSecurityData(goPlusData.value, address)
+        console.log('TokenDataService: Parsed security data for', address, ':', parsedSecurityData)
         if (parsedSecurityData) {
-          tokenData.security = parsedSecurityData
+          console.log('TokenDataService: Applying parsed security data:', parsedSecurityData)
+          tokenData.security = {
+            ...tokenData.security,
+            ...parsedSecurityData
+          }
+          console.log('TokenDataService: Final tokenData.security:', tokenData.security)
+          // Also update token metadata from GoPlus if available
+          if (parsedSecurityData.supply && !tokenData.totalSupply) {
+            tokenData.totalSupply = parseFloat(parsedSecurityData.supply)
+          }
+          // Update creator info from GoPlus if available
+          if (parsedSecurityData.creator && !tokenData.creator) {
+            tokenData.creator = parsedSecurityData.creator
+          }
         }
+      } else {
+        console.log('TokenDataService: No GoPlus data received for', address, goPlusData)
       }
 
-      // Process Helius data (Solana only)
+      // Process Helius data (Solana only) - for creator and mint info
       if (network === 'solana' && heliusData.status === 'fulfilled' && heliusData.value) {
         const parsedHeliusData = HeliusAPI.parseTokenMetadata(heliusData.value)
         if (parsedHeliusData) {
@@ -96,16 +116,31 @@ export class TokenDataService {
         }
       }
 
+      // Get holder count from Birdeye API
+      if (network === 'solana' && !tokenData.holderCount) {
+        try {
+          console.log('TokenDataService: Fetching holder count for', address)
+          const holdersData = await BirdeyeAPI.getTokenHolders(address, 1) // Only need 1 holder to get totalHolders
+          if (holdersData.totalHolders > 0) {
+            tokenData.holderCount = holdersData.totalHolders
+            console.log('TokenDataService: Found', holdersData.totalHolders, 'holders via Birdeye for', address)
+          }
+        } catch (error) {
+          console.log('TokenDataService: Could not fetch holder count:', error)
+        }
+      }
+
       // If we couldn't get basic token info, try to get it from token metadata
       if (!tokenData.name || !tokenData.symbol) {
         const metadataResult = await this.getTokenMetadata(address, network)
         if (metadataResult) {
-          tokenData.name = metadataResult.name || tokenData.name
-          tokenData.symbol = metadataResult.symbol || tokenData.symbol
-          tokenData.image = metadataResult.image || tokenData.image
-          tokenData.totalSupply = metadataResult.totalSupply
+          tokenData.name = (metadataResult as any).name || tokenData.name
+          tokenData.symbol = (metadataResult as any).symbol || tokenData.symbol
+          tokenData.image = (metadataResult as any).image || tokenData.image
+          tokenData.totalSupply = (metadataResult as any).totalSupply
         }
       }
+
 
       tokenData.isLoading = false
       
@@ -154,7 +189,7 @@ export class TokenDataService {
     }
   }
 
-  private static async getEthereumTokenMetadata(address: string, network: string) {
+  private static async getEthereumTokenMetadata(_address: string, network: string) {
     try {
       // For Ethereum, you could use Moralis, Alchemy, or direct RPC calls
       // This is a placeholder implementation
@@ -196,37 +231,70 @@ export class TokenDataService {
     return null
   }
 
-  static async getTokenHolders(address: string, network: string = 'solana', limit: number = 20) {
+  static async getTokenLargestAccounts(address: string, network: string = 'solana') {
     try {
-      console.log(`TokenDataService: Fetching holders for ${address} on ${network}`)
+      // console.log(`TokenDataService: Fetching largest accounts for ${address} on ${network}`)
       
       if (network !== 'solana') {
-        console.warn('Holders data currently only available for Solana tokens')
+        // console.warn('Largest accounts data currently only available for Solana tokens')
         return []
       }
 
-      console.log('TokenDataService: Calling HeliusAPI.getTokenHolders...')
-      const holdersData = await HeliusAPI.getTokenHolders(address, limit)
-      console.log('TokenDataService: Helius holders response:', holdersData)
-      
-      if (!holdersData || holdersData.length === 0) {
-        console.log('TokenDataService: No holders data returned')
-        return []
-      }
-
-      // Get current token data for price calculation
+      // Get current token data for price and total supply calculation
       const tokenData = await this.getTokenData(address, network)
       const tokenPrice = tokenData.price || 0
       const totalSupply = tokenData.totalSupply || 0
       
       console.log('TokenDataService: Token price for VALUE calculation:', tokenPrice, 'Total supply:', totalSupply)
 
+      // Use Helius RPC getTokenLargestAccounts method for more reliable data
+      console.log('TokenDataService: Calling HeliusAPI.getTokenLargestAccounts...')
+      const holdersData = await HeliusAPI.getTokenLargestAccounts(address, 20)
+      console.log('TokenDataService: Helius holders response:', holdersData)
+      
+      if (!holdersData || holdersData.length === 0) {
+        console.log('TokenDataService: No holder data received from Helius')
+        return []
+      }
+
+      console.log(`TokenDataService: Found ${holdersData.length} holders from Helius`)
+
+      // Parse the Helius holders data using the existing parser
       const parsedHolders = HeliusAPI.parseHoldersData(holdersData, tokenPrice, totalSupply)
-      console.log('TokenDataService: Parsed holders:', parsedHolders)
+      console.log('TokenDataService: Parsed Helius holders:', parsedHolders)
       
       return parsedHolders
     } catch (error) {
-      console.error('Error fetching token holders:', error)
+      console.error('Error fetching token largest accounts from Helius:', error)
+      return []
+    }
+  }
+
+  private static formatTokenAmount(amount: number): string {
+    if (amount >= 1000000000000) return `${(amount / 1000000000000).toFixed(2)}T`
+    if (amount >= 1000000000) return `${(amount / 1000000000).toFixed(2)}B`
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(2)}M`
+    if (amount >= 1000) return `${(amount / 1000).toFixed(2)}K`
+    if (amount >= 1) return amount.toFixed(2)
+    if (amount >= 0.01) return amount.toFixed(4)
+    if (amount > 0) return amount.toFixed(6)
+    return '0'
+  }
+
+  static async getTokenTransactions(address: string, network: string = 'solana', limit: number = 50) {
+    try {
+      if (network !== 'solana') {
+        console.warn('Token transactions currently only available for Solana tokens')
+        return []
+      }
+
+      console.log(`TokenDataService: Fetching transactions for ${address}`)
+      const transactions = await HeliusAPI.getTokenTransactions(address, limit)
+      console.log(`TokenDataService: Retrieved ${transactions.length} transactions`)
+      return transactions
+      
+    } catch (error) {
+      console.error('Error fetching token transactions:', error)
       return []
     }
   }

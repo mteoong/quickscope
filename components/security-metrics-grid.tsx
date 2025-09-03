@@ -14,6 +14,8 @@ interface SecurityMetricsGridProps {
 }
 
 export function SecurityMetricsGrid({ tokenSecurity, isLoading = false }: SecurityMetricsGridProps) {
+  console.log('SecurityMetricsGrid render:', { tokenSecurity, isLoading })
+  
   const getSecurityMetrics = (): SecurityMetric[] => {
     if (isLoading || !tokenSecurity) {
       return [
@@ -35,15 +37,15 @@ export function SecurityMetricsGrid({ tokenSecurity, isLoading = false }: Securi
       },
       {
         label: "Sell Tax",
-        value: `${tokenSecurity.sellTax.toFixed(1)}%`,
-        status: tokenSecurity.sellTax > 10 ? "bad" : tokenSecurity.sellTax > 5 ? "neutral" : "good",
-        icon: tokenSecurity.sellTax > 10 ? "x" : "check"
+        value: `${(tokenSecurity.sellTax || 0).toFixed(1)}%`,
+        status: (tokenSecurity.sellTax || 0) > 10 ? "bad" : (tokenSecurity.sellTax || 0) > 5 ? "neutral" : "good",
+        icon: (tokenSecurity.sellTax || 0) > 10 ? "x" : "check"
       },
       {
         label: "Buy Tax",
-        value: `${tokenSecurity.buyTax.toFixed(1)}%`,
-        status: tokenSecurity.buyTax > 10 ? "bad" : tokenSecurity.buyTax > 5 ? "neutral" : "good",
-        icon: tokenSecurity.buyTax > 10 ? "x" : "check"
+        value: `${(tokenSecurity.buyTax || 0).toFixed(1)}%`,
+        status: (tokenSecurity.buyTax || 0) > 10 ? "bad" : (tokenSecurity.buyTax || 0) > 5 ? "neutral" : "good",
+        icon: (tokenSecurity.buyTax || 0) > 10 ? "x" : "check"
       },
       {
         label: "Blacklist",

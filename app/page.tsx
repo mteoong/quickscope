@@ -1,28 +1,36 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Crosshair } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Crosshair, ChevronUp, ChevronDown } from "lucide-react"
 import { SidebarSearch } from "@/components/sidebar-search"
 import { TabbedTokenList } from "@/components/tabbed-token-list"
 import { TokenHeader } from "@/components/token-header"
 import { CandleChart } from "@/components/candle-chart"
 import { SecurityMetricsGrid } from "@/components/security-metrics-grid"
 import { TradingPanel } from "@/components/trading-panel"
-import { VolumeCard } from "@/components/volume-card"
 import { HoldersTradersCard } from "@/components/holders-traders-card"
-import { LiquidityCard } from "@/components/liquidity-card" // Import LiquidityCard
-import { TokenInfoCard } from "@/components/token-info-card" // Import TokenInfoCard
+import { TokenInfoCard } from "@/components/token-info-card"
+import { VolumeMarketCapCharts } from "@/components/volume-marketcap-charts"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
-import { mockTokens, mockSelectedToken, mockVolumeData } from "@/lib/mock-data"
+import { mockTokens, mockSelectedToken } from "@/lib/mock-data"
 import { TokenDataService } from "@/lib/token-data-service"
 import type { TokenSummary, SidebarItem, TokenData } from "@/lib/types"
-import { getUpdateRate } from "@/lib/config/api-config"
+// import { getUpdateRate } from "@/lib/config/api-config" // Disabled for debugging
 
 export default function CryptoTerminal() {
+  console.log('[CryptoTerminal] Component rendered')
+  
   const [selectedToken, setSelectedToken] = useState<TokenSummary>(mockSelectedToken)
   const [timeframe, setTimeframe] = useState("1h")
   const [customAddress, setCustomAddress] = useState<{ address: string; type: 'token' | 'pool' } | null>(null)
   const [tokenData, setTokenData] = useState<TokenData | null>(null)
+  
+  // Debug effect to log tokenData changes
+  useEffect(() => {
+    console.log('Main page: tokenData state changed:', tokenData)
+    console.log('Main page: tokenData.security:', tokenData?.security)
+  }, [tokenData])
+  const [layoutMode, setLayoutMode] = useState<'normal' | 'chart-max' | 'holders-max'>('normal')
 
   const handleTokenSelect = (token: SidebarItem) => {
     const tokenSummary: TokenSummary = {
@@ -46,7 +54,8 @@ export default function CryptoTerminal() {
     setTokenData(null) // Clear token data when selecting from list
   }
 
-  const handleAddressSubmit = async (address: string, type: 'token' | 'pool', imageUrl?: string) => {
+  const handleAddressSubmit = React.useCallback(async (address: string, type: 'token' | 'pool', imageUrl?: string) => {
+    console.log('[handleAddressSubmit] Called with:', address, type)
     setCustomAddress({ address, type })
     
     // Update selected token display info immediately
@@ -66,10 +75,12 @@ export default function CryptoTerminal() {
       console.log('Main page: Fetching token data for', address, 'on', network)
       const data = await TokenDataService.getTokenData(address, network)
       console.log('Main page: Received token data:', data)
+      console.log('Main page: Setting tokenData with security:', data.security)
       setTokenData(data)
       
       // Update token display with fetched data
       if (data.name && data.symbol) {
+        console.log('Main page: Updating selectedToken with data:', data)
         setSelectedToken(prev => ({
           ...prev,
           name: data.name,
@@ -84,40 +95,63 @@ export default function CryptoTerminal() {
           pairTitle: `${data.name} (${data.symbol}) on ${data.network}`
         }))
       }
+      console.log('Main page: Setting tokenData state:', data)
     } catch (error) {
       console.error('Failed to fetch token data:', error)
     }
-  }
+  }, [])
 
   // Load default token on page load
   useEffect(() => {
-    const defaultAddress = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // USDC on Solana
+    const defaultAddress = '2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv' // PENGU on Solana
     handleAddressSubmit(defaultAddress, 'token')
-  }, [])
+  }, [handleAddressSubmit])
 
-  // Effect to refresh token data periodically
-  useEffect(() => {
-    if (!customAddress) return
+  // Effect to refresh token data periodically - DISABLED FOR DEBUGGING
+  // useEffect(() => {
+  //   if (!customAddress) return
 
-    const interval = setInterval(async () => {
-      try {
-        const network = customAddress.address.startsWith('0x') ? 'ethereum' : 'solana'
-        const data = await TokenDataService.refreshTokenData(customAddress.address, network)
-        setTokenData(data)
-      } catch (error) {
-        console.error('Failed to refresh token data:', error)
-      }
-    }, getUpdateRate()) // Refresh every 5 seconds (configurable)
+  //   const interval = setInterval(async () => {
+  //     try {
+  //       const network = customAddress.address.startsWith('0x') ? 'ethereum' : 'solana'
+  //       const data = await TokenDataService.refreshTokenData(customAddress.address, network)
+  //       setTokenData(data)
+  //     } catch (error) {
+  //       console.error('Failed to refresh token data:', error)
+  //     }
+  //   }, getUpdateRate()) // Refresh every 5 seconds (configurable)
 
-    return () => clearInterval(interval)
-  }, [customAddress])
+  //   return () => clearInterval(interval)
+  // }, [customAddress])
+
+  // Layout control functions
+  const handleArrowUp = () => {
+    setLayoutMode(prev => prev === 'holders-max' ? 'normal' : 'holders-max')
+  }
+
+  const handleArrowDown = () => {
+    setLayoutMode(prev => prev === 'chart-max' ? 'normal' : 'chart-max')
+  }
+
+  // Get panel sizes based on layout mode
+  const getPanelSizes = () => {
+    switch (layoutMode) {
+      case 'chart-max':
+        return { chartSize: 80, holdersSize: 20 }
+      case 'holders-max':
+        return { chartSize: 30, holdersSize: 70 } // Chart minimum 30%, holders maximum 70%
+      default:
+        return { chartSize: 65, holdersSize: 35 } // Increased default bottom half size
+    }
+  }
+
+  const { chartSize, holdersSize } = getPanelSizes()
 
   return (
-    <div className="bg-background text-foreground">
-      {/* SIMPLE LAYOUT TEST - Remove all height constraints */}
-      <div className="flex" style={{ minHeight: '2000px' }}>
+    <div className="bg-background text-foreground h-screen max-h-screen overflow-hidden">
+      <div className="flex h-full">
         {/* Left Sidebar - Fixed width, fixed height */}
-        <div className="w-[220px] bg-sidebar border-r border-sidebar-border flex flex-col h-screen flex-shrink-0">
+        <div className="w-[220px] bg-sidebar border-r border-sidebar-border flex flex-col h-full flex-shrink-0">
           {/* Fixed header */}
           <div className="flex items-center gap-2 p-3 border-b border-sidebar-border flex-shrink-0">
             <Crosshair className="h-5 w-5 text-primary" />
@@ -147,63 +181,85 @@ export default function CryptoTerminal() {
           </div>
         </div>
 
-        {/* Center Column - FORCE TALL CONTENT */}
-        <div className="flex-1 bg-background overflow-y-scroll p-1" style={{ height: '2000px' }}>
-          <TokenHeader 
-            token={selectedToken} 
-            tokenData={tokenData}
-            timeframe={timeframe} 
-            onTimeframeChange={setTimeframe} 
-          />
+        {/* Center Column */}
+        <div className="flex-1 bg-background p-1 h-full flex flex-col overflow-hidden">
+          <div className="flex-shrink-0">
+            <TokenHeader 
+              token={selectedToken} 
+              tokenData={tokenData}
+              timeframe={timeframe} 
+              onTimeframeChange={setTimeframe} 
+            />
+          </div>
           
-          <ResizablePanelGroup direction="vertical" className="h-[1200px]">
-            <ResizablePanel defaultSize={70} minSize={40} maxSize={90}>
-              <CandleChart 
-                data={selectedToken.candleOHLC} 
-                timeframe={timeframe}
-                tokenAddress={customAddress?.address || (selectedToken.symbol.toLowerCase() === 'egl' ? 'solana' : selectedToken.symbol.toLowerCase())}
-                tokenSymbol={selectedToken.symbol}
-                addressType={customAddress?.type}
-              />
+          <ResizablePanelGroup direction="vertical" className="flex-1 min-h-0" key={layoutMode}>
+            <ResizablePanel defaultSize={chartSize} minSize={30} maxSize={80}>
+              <div className="relative h-full">
+                <CandleChart 
+                  data={selectedToken.candleOHLC} 
+                  timeframe={timeframe}
+                  tokenAddress={customAddress?.address || '2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv'}
+                  tokenSymbol={selectedToken.symbol}
+                  addressType={customAddress?.type}
+                />
+                {/* Arrow controls positioned at bottom right */}
+                <div className="absolute bottom-2 right-2 flex flex-col gap-1 z-10">
+                  <button
+                    onClick={handleArrowUp}
+                    className={`bg-black/60 hover:bg-black/80 text-white p-1 rounded transition-colors ${
+                      layoutMode === 'holders-max' ? 'bg-primary/60' : ''
+                    }`}
+                    title={layoutMode === 'holders-max' ? 'Reset to normal view' : 'Expand holders section'}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleArrowDown}
+                    className={`bg-black/60 hover:bg-black/80 text-white p-1 rounded transition-colors ${
+                      layoutMode === 'chart-max' ? 'bg-primary/60' : ''
+                    }`}
+                    title={layoutMode === 'chart-max' ? 'Reset to normal view' : 'Maximize chart section'}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </ResizablePanel>
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={30} minSize={10} maxSize={60}>
-              <div className="flex gap-2 h-full pt-2">
-                <div className="w-[30%] space-y-2">
-                  <VolumeCard data={mockVolumeData} />
-                  <LiquidityCard data={mockVolumeData} />
-                </div>
-                <div className="flex-1">
-                  <HoldersTradersCard 
-                    tokenAddress={customAddress?.address || selectedToken.id}
-                    network={(customAddress?.address || selectedToken.id).startsWith('0x') ? 'ethereum' : 'solana'}
-                  />
+            <ResizablePanel defaultSize={holdersSize} minSize={20} maxSize={70}>
+              <div className="py-2 h-full overflow-hidden flex flex-col">
+                <div className="flex gap-2 flex-1 min-h-0 min-w-0">
+                  <div className="w-[30%] min-w-0 flex-shrink-0">
+                    <VolumeMarketCapCharts 
+                      tokenAddress={customAddress?.address || selectedToken.id}
+                      className="h-full"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <HoldersTradersCard 
+                      tokenAddress={customAddress?.address || selectedToken.id}
+                      network={(customAddress?.address || selectedToken.id).startsWith('0x') ? 'ethereum' : 'solana'}
+                    />
+                  </div>
                 </div>
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
           
-          {/* FORCE OVERFLOW - DEBUG SECTION */}
-          <div className="bg-red-500 text-white p-4 text-center font-bold">
-            FORCED OVERFLOW CONTENT - Should extend beyond 934px constraint
-          </div>
-          <div className="bg-blue-500 text-white p-4 text-center h-[300px]">
-            MORE FORCED CONTENT - Total height should now be 1500px+
-          </div>
-          <div className="bg-green-500 text-white p-4 text-center h-[200px]">
-            FINAL OVERFLOW SECTION - This should definitely create scrollable content
-          </div>
         </div>
 
         {/* Right Column - Trading interface */}
-        <div className="bg-sidebar border-l border-sidebar-border flex flex-col h-screen overflow-y-auto scrollbar-hide">
+        <div className="bg-sidebar border-l border-sidebar-border flex flex-col h-full overflow-y-auto scrollbar-hide">
           <div className="p-2 space-y-2">
             <SecurityMetricsGrid 
+              key={tokenData?.address || 'loading'}
               tokenSecurity={tokenData?.security}
               isLoading={tokenData?.isLoading}
             />
+            {/* Debug info */}
+            {console.log('Main page: Passing to SecurityMetricsGrid - security:', tokenData?.security, 'isLoading:', tokenData?.isLoading)}
             <TradingPanel />
             <TokenInfoCard 
               tokenData={tokenData}

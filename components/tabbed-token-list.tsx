@@ -85,10 +85,10 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
           Trending
         </Button>
         <Button
-          variant={activeTab === "watchlist" ? "default" : "ghost"}
+          variant="ghost"
           size="sm"
-          className="flex-1 h-7 text-xs"
-          onClick={() => setActiveTab("watchlist")}
+          className="flex-1 h-7 text-xs opacity-50 cursor-not-allowed"
+          disabled
         >
           Watchlist
         </Button>
@@ -103,7 +103,7 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
               </div>
             ) : trendingTokens.length > 0 ? (
               trendingTokens.map((token, index) => (
-                <div key={token.address}>
+                <div key={`trending-${token.address}`}>
                   <div
                     className="flex items-center p-2 rounded hover:bg-blue-500/10 cursor-pointer text-xs"
                     onClick={() => onTrendingSelect(token.address, 'token', token.image)}
@@ -125,19 +125,19 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
                       <div className="text-foreground text-xs font-medium">
                         ${(() => {
                           const price = token.price
-                          console.log('Trending Token Price Debug:', { price, symbol: token.symbol })
+                          // console.log('Trending Token Price Debug:', { price, symbol: token.symbol })
                           
                           if (price >= 1) {
                             const result = price.toPrecision(6)
-                            console.log('≥$1 toPrecision(6):', result)
+                            // console.log('≥$1 toPrecision(6):', result)
                             return result
                           } else if (price >= 0.0001) {
                             const result = price.toFixed(5)
-                            console.log('≥0.0001 toFixed(5):', result)
+                            // console.log('≥0.0001 toFixed(5):', result)
                             return result
                           } else {
                             const result = price.toExponential(2)
-                            console.log('<0.0001 toExponential(2):', result)
+                            // console.log('<0.0001 toExponential(2):', result)
                             return result
                           }
                         })()}
@@ -145,10 +145,10 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="text-[10px]">
-                        <span className="text-muted-foreground">24h:</span> <span className={token.priceChange24h >= 0 ? "text-green-400" : "text-red-400"}>{token.priceChange24h >= 0 ? "+" : ""}{token.priceChange24h > 999 ? "999+" : token.priceChange24h.toFixed(1)}%</span>
+                        <span className="text-muted-foreground">24h:</span> <span className={(token.priceChange24h || 0) >= 0 ? "text-green-400" : "text-red-400"}>{(token.priceChange24h || 0) >= 0 ? "+" : ""}{(token.priceChange24h || 0) > 999 ? "999+" : (token.priceChange24h || 0).toFixed(1)}%</span>
                       </div>
                       <div className="text-muted-foreground text-[10px]">
-                        MC: ${token.marketCap > 1000000 ? (token.marketCap / 1000000).toFixed(1) + 'M' : (token.marketCap / 1000).toFixed(0) + 'K'}
+                        MC: ${(token.marketCap || 0) > 1000000 ? ((token.marketCap || 0) / 1000000).toFixed(1) + 'M' : ((token.marketCap || 0) / 1000).toFixed(0) + 'K'}
                       </div>
                     </div>
                   </div>
@@ -167,7 +167,7 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
         ) : (
           currentItems.map((item, index) => (
             <div
-              key={item.address}
+              key={`watchlist-${item.address}`}
               className="flex items-center justify-between p-2 rounded hover:bg-accent/50 cursor-pointer text-xs"
               onClick={() => onSelect(item)}
             >
@@ -180,15 +180,15 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
                 />
                 <div className="min-w-0">
                   <div className="font-medium truncate">{item.symbol}</div>
-                  <div className="text-muted-foreground text-[10px] truncate">${item.price.toFixed(6)}</div>
+                  <div className="text-muted-foreground text-[10px] truncate">${(item.price || 0).toFixed(6)}</div>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <div className={`text-[10px] ${item.pct24h >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {item.pct24h >= 0 ? "+" : ""}
-                  {item.pct24h.toFixed(1)}%
+                <div className={`text-[10px] ${(item.pct24h || 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {(item.pct24h || 0) >= 0 ? "+" : ""}
+                  {(item.pct24h || 0).toFixed(1)}%
                 </div>
-                <div className="text-muted-foreground text-[10px]">${(item.vol24h / 1000).toFixed(0)}K</div>
+                <div className="text-muted-foreground text-[10px]">${((item.vol24h || 0) / 1000).toFixed(0)}K</div>
               </div>
             </div>
           ))
