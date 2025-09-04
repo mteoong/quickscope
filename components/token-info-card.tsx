@@ -97,14 +97,14 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
       {primaryPool ? (
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">Pooled Token</span>
+            <span className="text-xs text-muted-foreground">Pooled {primaryPool.baseToken.symbol}</span>
             <span className="text-xs text-foreground">
               {formatNumber(parseFloat(primaryPool.baseToken.amount))} {primaryPool.baseToken.symbol}
             </span>
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">Pooled Token Pair</span>
+            <span className="text-xs text-muted-foreground">Pooled {primaryPool.quoteToken.symbol}</span>
             <span className="text-xs text-foreground">
               {formatNumber(parseFloat(primaryPool.quoteToken.amount))} {primaryPool.quoteToken.symbol}
             </span>

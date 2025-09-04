@@ -29,9 +29,9 @@ export class BirdeyeAPI {
   
   // Separate API keys for different endpoint types to avoid rate limiting conflicts
   private static readonly API_KEYS = {
-    HOLDERS: '4f29660278dd44e3af7a0d5b01dca853',      // For token holders endpoint (fallback use)
-    HISTORICAL: '41ae5dbd9a7c403f86b1f647d9c709e0',   // For historical data endpoint (volume charts)
-    TRANSACTIONS: '41ae5dbd9a7c403f86b1f647d9c709e0'  // For transactions endpoint (traders tab)
+    HOLDERS: process.env.BIRDEYE_API_KEY_HOLDERS || '4f29660278dd44e3af7a0d5b01dca853',      // For token holders endpoint (fallback use)
+    HISTORICAL: process.env.BIRDEYE_API_KEY_HISTORICAL || '41ae5dbd9a7c403f86b1f647d9c709e0',   // For historical data endpoint (volume charts)
+    TRANSACTIONS: process.env.BIRDEYE_API_KEY_TRANSACTIONS || '41ae5dbd9a7c403f86b1f647d9c709e0'  // For transactions endpoint (traders tab)
   }
   
   // Separate usage tracking for each endpoint type
@@ -377,6 +377,15 @@ export class BirdeyeAPI {
       }, { maxRetries: 3, baseDelay: 2000, maxDelay: 30000 })
         .catch((error) => {
           console.error('[BirdeyeAPI] Error fetching token transactions after retries:', error)
+          console.error('[BirdeyeAPI] Token address:', tokenAddress)
+          console.error('[BirdeyeAPI] Limit:', limit)
+          console.error('[BirdeyeAPI] Environment:', typeof window === 'undefined' ? 'server' : 'client')
+          console.error('[BirdeyeAPI] API Key exists:', !!this.getApiKeyForEndpoint('TRANSACTIONS'))
+          console.error('[BirdeyeAPI] Error details:', {
+            message: error instanceof Error ? error.message : String(error),
+            status: (error as any)?.status,
+            stack: error instanceof Error ? error.stack : undefined
+          })
           return []
         })
     })

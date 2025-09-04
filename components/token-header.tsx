@@ -69,7 +69,7 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
 
   return (
     <div className="space-y-2">
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 overflow-hidden mb-2">
         <div className="flex">
           <div className="flex items-center justify-center w-8 bg-card border-r border-border">
             <button className="text-muted-foreground hover:text-yellow-400 transition-colors">

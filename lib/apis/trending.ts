@@ -93,7 +93,7 @@ export interface BirdeyeTradersResponse {
 
 export class TrendingAPI {
   private static readonly BIRDEYE_BASE_URL = 'https://public-api.birdeye.so/defi'
-  private static readonly BIRDEYE_API_KEY = '4f29660278dd44e3af7a0d5b01dca853'
+  private static readonly BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY_HOLDERS || '4f29660278dd44e3af7a0d5b01dca853'
   private static cache: { data: TrendingToken[]; expires: number } | null = null
   private static trendingAddressesCache: { addresses: string[]; expires: number } | null = null
   private static tradersCache: Map<string, { data: BirdeyeTrader[]; expires: number }> = new Map()

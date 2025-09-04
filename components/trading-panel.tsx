@@ -7,7 +7,7 @@ import { Settings, Wallet, TrendingUp, TrendingDown } from "lucide-react"
 export function TradingPanel() {
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy")
   const [orderType, setOrderType] = useState<"market" | "limit">("market")
-  const [, setAmount] = useState("")
+  const [amount, setAmount] = useState("")
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
 
   const presets = ["0.01", "0.1", "0.5", "1"]
@@ -59,10 +59,8 @@ export function TradingPanel() {
             Market
           </button>
           <button
-            onClick={() => setOrderType("limit")}
-            className={`text-xs ${
-              orderType === "limit" ? "text-gray-300 border-b border-gray-400" : "text-gray-500 hover:text-gray-300"
-            }`}
+            disabled
+            className="text-xs text-gray-600 cursor-not-allowed"
           >
             Limit
           </button>
@@ -72,31 +70,41 @@ export function TradingPanel() {
 
       {/* Amount Section */}
       <div className="bg-[#0f1011] border border-[#1a1b1c] rounded-sm overflow-hidden">
-        {/* Amount Header */}
+        {/* Amount Input Field */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-[#1a1b1c]/50">
-          <span className="text-xs text-gray-500">Amount</span>
-          <span className="text-xs text-gray-300">SOL</span>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value)
+              setSelectedPreset(null) // Clear preset selection when manually typing
+            }}
+            placeholder="Amount"
+            className="flex-1 bg-transparent text-gray-300 text-sm outline-none placeholder-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+            step="0.01"
+            min="0"
+          />
+          <span className="text-xs text-gray-300 ml-2">SOL</span>
         </div>
 
         {/* Preset Buttons */}
         <div className="flex">
           {presets.map((preset, index) => (
-            <Button
+            <button
               key={preset}
-              variant="ghost"
-              size="sm"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault()
                 setAmount(preset)
                 setSelectedPreset(preset)
               }}
-              className={`flex-1 h-8 text-xs rounded-none border-0 ${index > 0 ? "border-l border-[#1a1b1c]/50" : ""} ${
+              className={`flex-1 h-8 text-xs rounded-none border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 active:outline-none ${index > 0 ? "border-l border-[#1a1b1c]/50" : ""} ${
                 selectedPreset === preset
                   ? "bg-[#1a1b1c] text-gray-300"
                   : "bg-transparent text-gray-400 hover:bg-[#1a1b1c]/50"
               }`}
             >
               {preset}
-            </Button>
+            </button>
           ))}
           <Button
             variant="ghost"

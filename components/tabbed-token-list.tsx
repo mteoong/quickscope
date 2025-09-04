@@ -87,7 +87,7 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
         <Button
           variant="ghost"
           size="sm"
-          className="flex-1 h-7 text-xs opacity-50 cursor-not-allowed"
+          className="flex-1 h-7 text-xs opacity-50 !cursor-not-allowed hover:!cursor-not-allowed hover:bg-transparent"
           disabled
         >
           Watchlist

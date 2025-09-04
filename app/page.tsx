@@ -175,7 +175,7 @@ export default function CryptoTerminal() {
           
           {/* Fixed sign-in button at bottom */}
           <div className="border-t border-sidebar-border p-3 flex-shrink-0 bg-sidebar">
-            <button className="w-full bg-primary text-primary-foreground py-2 px-4 rounded text-sm font-medium hover:bg-primary/90 transition-colors">
+            <button className="w-full bg-primary text-primary-foreground py-2 px-4 rounded text-sm font-medium hover:bg-primary/90 transition-colors cursor-not-allowed">
               Sign In
             </button>
           </div>
@@ -258,8 +258,6 @@ export default function CryptoTerminal() {
               tokenSecurity={tokenData?.security}
               isLoading={tokenData?.isLoading}
             />
-            {/* Debug info */}
-            {console.log('Main page: Passing to SecurityMetricsGrid - security:', tokenData?.security, 'isLoading:', tokenData?.isLoading)}
             <TradingPanel />
             <TokenInfoCard 
               tokenData={tokenData}

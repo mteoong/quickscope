@@ -66,7 +66,7 @@ function generateMockPriceData(tokenId: string, days: number): any {
   let currentPrice = basePrice
   
   for (let i = 0; i < dataPoints; i++) {
-    const timestamp = now - (dataPoints - i - 1) * intervalMs
+    const timestamp = now - (dataPoints - i - 1) * interval
     
     // Simulate price movement with some volatility
     const volatility = 0.02 // 2% volatility
@@ -492,7 +492,7 @@ function generateMockPriceDataFromCurrent(tokenId: string, days: number, current
   let price = currentPrice * (0.9 + Math.random() * 0.1) // Start slightly below current
   
   for (let i = 0; i < dataPoints; i++) {
-    const timestamp = now - (dataPoints - i - 1) * intervalMs
+    const timestamp = now - (dataPoints - i - 1) * interval
     
     // Simulate gradual movement toward current price
     const targetProgress = i / (dataPoints - 1)
@@ -556,9 +556,10 @@ function normalizePriceData(priceData: any): NormalizedCandle[] {
 }
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const address = searchParams.get('address') || 'ethereum'
+  
   try {
-    const { searchParams } = new URL(request.url)
-    const address = searchParams.get('address') || 'ethereum'
     const timeframe = searchParams.get('timeframe') || '1d'
     const chain = searchParams.get('chain') || 'ethereum'
     const before = searchParams.get('before') ? parseInt(searchParams.get('before')!) : undefined
