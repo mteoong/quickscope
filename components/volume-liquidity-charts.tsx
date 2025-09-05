@@ -19,16 +19,17 @@ interface ChartDataPoint {
 }
 
 function formatCompactUSD(value: number): string {
-  if (value >= 1e9) {
-    return `$${(value / 1e9).toFixed(1)}B`
+  const safeValue = Number(value ?? 0)
+  if (safeValue >= 1e9) {
+    return `$${(safeValue / 1e9).toFixed(1)}B`
   }
-  if (value >= 1e6) {
-    return `$${(value / 1e6).toFixed(1)}M`
+  if (safeValue >= 1e6) {
+    return `$${(safeValue / 1e6).toFixed(1)}M`
   }
-  if (value >= 1e3) {
-    return `$${(value / 1e3).toFixed(1)}K`
+  if (safeValue >= 1e3) {
+    return `$${(safeValue / 1e3).toFixed(1)}K`
   }
-  return `$${value.toFixed(0)}`
+  return `$${safeValue.toFixed(0)}`
 }
 
 function formatExactUSD(value: number): string {

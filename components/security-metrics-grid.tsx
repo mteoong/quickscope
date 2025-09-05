@@ -37,15 +37,15 @@ export function SecurityMetricsGrid({ tokenSecurity, isLoading = false }: Securi
       },
       {
         label: "Sell Tax",
-        value: `${(tokenSecurity.sellTax || 0).toFixed(1)}%`,
-        status: (tokenSecurity.sellTax || 0) > 10 ? "bad" : (tokenSecurity.sellTax || 0) > 5 ? "neutral" : "good",
-        icon: (tokenSecurity.sellTax || 0) > 10 ? "x" : "check"
+        value: `${Number(tokenSecurity.sellTax ?? 0).toFixed(1)}%`,
+        status: Number(tokenSecurity.sellTax ?? 0) > 10 ? "bad" : Number(tokenSecurity.sellTax ?? 0) > 5 ? "neutral" : "good",
+        icon: Number(tokenSecurity.sellTax ?? 0) > 10 ? "x" : "check"
       },
       {
         label: "Buy Tax",
-        value: `${(tokenSecurity.buyTax || 0).toFixed(1)}%`,
-        status: (tokenSecurity.buyTax || 0) > 10 ? "bad" : (tokenSecurity.buyTax || 0) > 5 ? "neutral" : "good",
-        icon: (tokenSecurity.buyTax || 0) > 10 ? "x" : "check"
+        value: `${Number(tokenSecurity.buyTax ?? 0).toFixed(1)}%`,
+        status: Number(tokenSecurity.buyTax ?? 0) > 10 ? "bad" : Number(tokenSecurity.buyTax ?? 0) > 5 ? "neutral" : "good",
+        icon: Number(tokenSecurity.buyTax ?? 0) > 10 ? "x" : "check"
       },
       {
         label: "Blacklist",

@@ -28,9 +28,10 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
   }
 
   const formatPriceChange = (change: number) => {
-    const color = change >= 0 ? 'text-green-400' : 'text-red-400'
-    const sign = change >= 0 ? '+' : ''
-    return `${color} ${sign}${change.toFixed(2)}%`
+    const safeChange = Number(change ?? 0)
+    const color = safeChange >= 0 ? 'text-green-400' : 'text-red-400'
+    const sign = safeChange >= 0 ? '+' : ''
+    return `${color} ${sign}${safeChange.toFixed(2)}%`
   }
 
   const getSecurityBadges = () => {

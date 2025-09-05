@@ -20,11 +20,12 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
   
   // Format numbers
   const formatNumber = (num: number | undefined) => {
+    const safeNum = Number(num ?? 0)
     if (!num) return "—"
-    if (num >= 1e9) return (num / 1e9).toFixed(2) + "B"
-    if (num >= 1e6) return (num / 1e6).toFixed(2) + "M"
-    if (num >= 1e3) return (num / 1e3).toFixed(2) + "K"
-    return num.toFixed(0)
+    if (safeNum >= 1e9) return (safeNum / 1e9).toFixed(2) + "B"
+    if (safeNum >= 1e6) return (safeNum / 1e6).toFixed(2) + "M"
+    if (safeNum >= 1e3) return (safeNum / 1e3).toFixed(2) + "K"
+    return safeNum.toFixed(0)
   }
 
   const formatSupply = (num: number | undefined) => {

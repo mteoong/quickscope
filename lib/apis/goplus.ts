@@ -228,7 +228,7 @@ export class GoPlusAPI {
       return data
 
     }, { 
-      maxRetries: 3, 
+      maxRetries: 7, 
       baseDelay: 1000, 
       maxDelay: 4000,
       retryCondition: (error: any) => {

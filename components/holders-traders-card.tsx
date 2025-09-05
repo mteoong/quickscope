@@ -224,9 +224,10 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
   }
 
   const formatValue = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
-    if (value >= 1000) return `$${(value / 1000).toFixed(1)}K`
-    return `$${value.toFixed(0)}`
+    const safeValue = Number(value ?? 0)
+    if (safeValue >= 1000000) return `$${(safeValue / 1000000).toFixed(1)}M`
+    if (safeValue >= 1000) return `$${(safeValue / 1000).toFixed(1)}K`
+    return `$${safeValue.toFixed(0)}`
   }
 
   const formatAddress = (address: string) => {
@@ -290,8 +291,8 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                       {tx.type}
                     </div>
                     <div className={`font-medium ${colorClass}`}>{formatValue(tx.amount)}</div>
-                    <div className={`font-medium ${colorClass}`}>${(tx.pricePerToken || 0).toFixed(4)}</div>
-                    <div className={`font-medium ${colorClass}`}>${(tx.usdValue || 0).toFixed(2)}</div>
+                    <div className={`font-medium ${colorClass}`}>${Number(tx.pricePerToken ?? 0).toFixed(4)}</div>
+                    <div className={`font-medium ${colorClass}`}>${Number(tx.usdValue ?? 0).toFixed(2)}</div>
                     <div className="flex items-center gap-1">
                       <span className="font-mono text-xs">{formatAddress(tx.trader)}</span>
                       <Copy
@@ -406,7 +407,7 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                     </div>
                     
                     {/* % Column */}
-                    <div className="font-medium">{holder.percentage.toFixed(2)}%</div>
+                    <div className="font-medium">{Number(holder.percentage ?? 0).toFixed(2)}%</div>
                     
                     {/* Amount Column with Progress Bar */}
                     <div className="space-y-1">

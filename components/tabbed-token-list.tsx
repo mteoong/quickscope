@@ -124,7 +124,7 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
                       </div>
                       <div className="text-foreground text-xs font-medium">
                         ${(() => {
-                          const price = token.price
+                          const price = Number(token.price ?? 0)
                           // console.log('Trending Token Price Debug:', { price, symbol: token.symbol })
                           
                           if (price >= 1) {
@@ -145,10 +145,10 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="text-[10px]">
-                        <span className="text-muted-foreground">24h:</span> <span className={(token.priceChange24h || 0) >= 0 ? "text-green-400" : "text-red-400"}>{(token.priceChange24h || 0) >= 0 ? "+" : ""}{(token.priceChange24h || 0) > 999 ? "999+" : (token.priceChange24h || 0).toFixed(1)}%</span>
+                        <span className="text-muted-foreground">24h:</span> <span className={((token.priceChange24h ?? 0) >= 0) ? "text-green-400" : "text-red-400"}>{((token.priceChange24h ?? 0) >= 0) ? "+" : ""}{((token.priceChange24h ?? 0) > 999) ? "999+" : Number(token.priceChange24h ?? 0).toFixed(1)}%</span>
                       </div>
                       <div className="text-muted-foreground text-[10px]">
-                        MC: ${(token.marketCap || 0) > 1000000 ? ((token.marketCap || 0) / 1000000).toFixed(1) + 'M' : ((token.marketCap || 0) / 1000).toFixed(0) + 'K'}
+                        MC: ${((token.marketCap ?? 0) > 1000000) ? (Number(token.marketCap ?? 0) / 1000000).toFixed(1) + 'M' : (Number(token.marketCap ?? 0) / 1000).toFixed(0) + 'K'}
                       </div>
                     </div>
                   </div>
@@ -180,15 +180,15 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
                 />
                 <div className="min-w-0">
                   <div className="font-medium truncate">{item.symbol}</div>
-                  <div className="text-muted-foreground text-[10px] truncate">${(item.price || 0).toFixed(6)}</div>
+                  <div className="text-muted-foreground text-[10px] truncate">${Number(item.price ?? 0).toFixed(6)}</div>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <div className={`text-[10px] ${(item.pct24h || 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {(item.pct24h || 0) >= 0 ? "+" : ""}
-                  {(item.pct24h || 0).toFixed(1)}%
+                <div className={`text-[10px] ${((item.pct24h ?? 0) >= 0) ? "text-green-400" : "text-red-400"}`}>
+                  {((item.pct24h ?? 0) >= 0) ? "+" : ""}
+                  {Number(item.pct24h ?? 0).toFixed(1)}%
                 </div>
-                <div className="text-muted-foreground text-[10px]">${((item.vol24h || 0) / 1000).toFixed(0)}K</div>
+                <div className="text-muted-foreground text-[10px]">${(Number(item.vol24h ?? 0) / 1000).toFixed(0)}K</div>
               </div>
             </div>
           ))

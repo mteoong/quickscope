@@ -145,7 +145,7 @@ export class BirdeyeAPI {
 
         return { holders, totalHolders }
 
-      }, { maxRetries: 3, baseDelay: 2000, maxDelay: 30000 })
+      }, { maxRetries: 7, baseDelay: 2000, maxDelay: 30000 })
         .catch((error) => {
           console.error('[BirdeyeAPI] All retries failed, using fallback data. Error:', error)
           return this.getFallbackHoldersData(tokenAddress, limit)
@@ -294,7 +294,7 @@ export class BirdeyeAPI {
 
         return parsedData
 
-      }, { maxRetries: 3, baseDelay: 2000, maxDelay: 30000 })
+      }, { maxRetries: 7, baseDelay: 2000, maxDelay: 30000 })
         .catch((error) => {
           console.error('[BirdeyeAPI] Error fetching historical data:', error)
           return this.getFallbackHistoricalData(timeframe)
@@ -374,7 +374,7 @@ export class BirdeyeAPI {
 
         return data.data.items || []
 
-      }, { maxRetries: 3, baseDelay: 2000, maxDelay: 30000 })
+      }, { maxRetries: 7, baseDelay: 2000, maxDelay: 30000 })
         .catch((error) => {
           console.error('[BirdeyeAPI] Error fetching token transactions after retries:', error)
           console.error('[BirdeyeAPI] Token address:', tokenAddress)

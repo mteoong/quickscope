@@ -660,7 +660,7 @@ export class TrendingAPI {
         console.groupEnd()
         return data
 
-      }, { maxRetries: 3, baseDelay: 2000, maxDelay: 30000 })
+      }, { maxRetries: 7, baseDelay: 2000, maxDelay: 30000 })
         .catch((error) => {
           console.error(`💥 All retries failed:`)
           
