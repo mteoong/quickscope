@@ -116,7 +116,8 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
           {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
             <button
               key={tf}
-              className="px-2 py-1 text-xs bg-muted rounded"
+              className="px-2 py-1 text-xs bg-muted rounded cursor-not-allowed opacity-50"
+              disabled
             >
               {tf}
             </button>
@@ -138,9 +139,9 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                timeframe === tf 
-                  ? 'bg-primary text-primary-foreground' 
+              className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                timeframe === tf
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-muted hover:bg-muted/80'
               }`}
             >
@@ -164,9 +165,9 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                timeframe === tf 
-                  ? 'bg-primary text-primary-foreground' 
+              className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                timeframe === tf
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-muted hover:bg-muted/80'
               }`}
             >

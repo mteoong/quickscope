@@ -17,19 +17,14 @@ import { TokenDataService } from "@/lib/token-data-service"
 import type { TokenSummary, SidebarItem, TokenData } from "@/lib/types"
 // import { getUpdateRate } from "@/lib/config/api-config" // Disabled for debugging
 
+// Force dynamic rendering to prevent stale data issues
+export const dynamic = 'force-dynamic'
+
 export default function CryptoTerminal() {
-  console.log('[CryptoTerminal] Component rendered')
-  
   const [selectedToken, setSelectedToken] = useState<TokenSummary>(mockSelectedToken)
   const [timeframe, setTimeframe] = useState("1h")
   const [customAddress, setCustomAddress] = useState<{ address: string; type: 'token' | 'pool' } | null>(null)
   const [tokenData, setTokenData] = useState<TokenData | null>(null)
-  
-  // Debug effect to log tokenData changes
-  useEffect(() => {
-    console.log('Main page: tokenData state changed:', tokenData)
-    console.log('Main page: tokenData.security:', tokenData?.security)
-  }, [tokenData])
   const [layoutMode, setLayoutMode] = useState<'normal' | 'chart-max' | 'holders-max'>('normal')
 
   const handleTokenSelect = (token: SidebarItem) => {
@@ -55,9 +50,8 @@ export default function CryptoTerminal() {
   }
 
   const handleAddressSubmit = React.useCallback(async (address: string, type: 'token' | 'pool', imageUrl?: string) => {
-    console.log('[handleAddressSubmit] Called with:', address, type)
     setCustomAddress({ address, type })
-    
+
     // Update selected token display info immediately
     setSelectedToken({
       ...mockSelectedToken,
@@ -72,15 +66,11 @@ export default function CryptoTerminal() {
     try {
       // Detect network from address format
       const network = address.startsWith('0x') ? 'ethereum' : 'solana'
-      console.log('Main page: Fetching token data for', address, 'on', network)
       const data = await TokenDataService.getTokenData(address, network)
-      console.log('Main page: Received token data:', data)
-      console.log('Main page: Setting tokenData with security:', data.security)
       setTokenData(data)
-      
+
       // Update token display with fetched data
       if (data.name && data.symbol) {
-        console.log('Main page: Updating selectedToken with data:', data)
         setSelectedToken(prev => ({
           ...prev,
           name: data.name,
@@ -95,7 +85,6 @@ export default function CryptoTerminal() {
           pairTitle: `${data.name} (${data.symbol}) on ${data.network}`
         }))
       }
-      console.log('Main page: Setting tokenData state:', data)
     } catch (error) {
       console.error('Failed to fetch token data:', error)
     }

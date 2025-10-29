@@ -163,9 +163,7 @@ async function fetchPriceData(tokenId: string, timeframe: string, before?: numbe
     const gtTimeframe = getGeckoTerminalTimeframe(timeframe)
     const beforeParam = before ? `&before=${before}` : ''
     const gtUrl = `https://api.geckoterminal.com/api/v2/networks/${tokenInfo.network}/pools/${tokenInfo.address}/ohlcv/${gtTimeframe}?aggregate=1&limit=${Math.min(actualLimit, 1000)}${beforeParam}`
-    
-    console.log(`Fetching from GeckoTerminal (before: ${before ? new Date(before * 1000).toISOString() : 'none'}): ${gtUrl}`)
-    
+
     const gtResponse = await fetch(gtUrl, {
       headers: {
         'Accept': 'application/json',
@@ -199,17 +197,10 @@ async function fetchPriceData(tokenId: string, timeframe: string, before?: numbe
           ]).sort((a: any, b: any) => a[0] - b[0]) // Sort by timestamp ascending
           
           // Remove duplicates from volumes too
-          const dedupedVolumes = volumes.filter((item: any, index: number) => 
+          const dedupedVolumes = volumes.filter((item: any, index: number) =>
             index === 0 || item[0] !== volumes[index - 1][0]
           )
-          
-          // Debug: log data range
-          if (dedupedData.length > 0) {
-            const firstDate = new Date(dedupedData[0][0]).toISOString()
-            const lastDate = new Date(dedupedData[dedupedData.length - 1][0]).toISOString()
-            console.log(`GeckoTerminal data range: ${firstDate} to ${lastDate} (${dedupedData.length} points, deduped from ${mappedData.length})`)
-          }
-          
+
           const result = { 
             ohlcData: dedupedData, 
             hasOHLC: true,
@@ -225,8 +216,6 @@ async function fetchPriceData(tokenId: string, timeframe: string, before?: numbe
     // Fallback to CryptoCompare for major tokens
     const cryptoSymbol = getCryptoCompareSymbol(tokenId)
     if (cryptoSymbol && ['BTC', 'ETH', 'SOL'].includes(cryptoSymbol)) {
-      console.log(`GeckoTerminal failed, trying CryptoCompare fallback for ${cryptoSymbol}`)
-      
       const toTs = before ? `&toTs=${before}` : ''
       const cryptoUrl = `https://min-api.cryptocompare.com/data/v2/histohour?fsym=${cryptoSymbol}&tsym=USD&limit=${Math.min(actualLimit, 2000)}${toTs}`
       
@@ -247,13 +236,11 @@ async function fetchPriceData(tokenId: string, timeframe: string, before?: numbe
             const mappedData = ohlcData.map((item: any) => [
               item.time * 1000, // Convert to milliseconds
               item.open,
-              item.high,  
+              item.high,
               item.low,
               item.close
             ])
-            
-            console.log(`CryptoCompare fallback data range: ${ohlcData.length} points`)
-            
+
             const result = { 
               ohlcData: mappedData, 
               hasOHLC: true,
@@ -272,9 +259,7 @@ async function fetchPriceData(tokenId: string, timeframe: string, before?: numbe
     if (coinGeckoId) {
       const days = getGeckoDaysFromTimeframe(timeframe)
       const gcUrl = `https://api.coingecko.com/api/v3/coins/${coinGeckoId}/market_chart?vs_currency=usd&days=${days}&interval=hourly`
-      
-      console.log(`Trying CoinGecko as fallback: ${gcUrl}`)
-      
+
       const gcResponse = await fetch(gcUrl, {
         headers: {
           'Accept': 'application/json',
@@ -297,7 +282,6 @@ async function fetchPriceData(tokenId: string, timeframe: string, before?: numbe
     }
 
     // Final fallback to enhanced mock data
-    console.log(`All APIs failed for ${tokenId}, using enhanced mock data`)
     const result = generateEnhancedMockData(tokenId, timeframe)
     cache.set(cacheKey, { data: result, timestamp: Date.now() })
     return result
@@ -554,6 +538,10 @@ function normalizePriceData(priceData: any): NormalizedCandle[] {
     }
   })
 }
+
+// Force dynamic rendering - price data should always be fresh
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)

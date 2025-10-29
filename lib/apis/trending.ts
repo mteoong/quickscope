@@ -98,7 +98,7 @@ export class TrendingAPI {
   private static trendingAddressesCache: { addresses: string[]; expires: number } | null = null
   private static tradersCache: Map<string, { data: BirdeyeTrader[]; expires: number }> = new Map()
   private static readonly CACHE_DURATION = 60 * 60 * 1000 // 1 hour for trending addresses
-  private static readonly TOKEN_DATA_CACHE_DURATION = 60 * 1000 // 1 minute for token data (reduced API calls)
+  private static readonly TOKEN_DATA_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes for token data (reduced API calls)
 
   static async getTrendingTokens(): Promise<TrendingToken[]> {
     // Check cache first
@@ -137,49 +137,62 @@ export class TrendingAPI {
     }
 
     try {
-      // console.log('Fetching fresh trending addresses from Birdeye API...')
-      
-      const response = await fetch(`${this.BIRDEYE_BASE_URL}/token_trending?limit=20`, {
-        headers: {
-          'Accept': 'application/json',
-          'X-API-KEY': this.BIRDEYE_API_KEY,
-        }
-      })
-
-      if (!response.ok) {
-        console.error(`Birdeye API error: ${response.status} ${response.statusText}`)
-        
-        // Handle rate limiting gracefully
-        if (response.status === 429) {
-          console.log('Rate limit hit - using cached data or fallback')
-          // Return cached data if available, even if expired
-          if (this.trendingAddressesCache) {
-            // console.log('Using expired trending addresses cache due to rate limit')
-            return this.trendingAddressesCache.addresses
+      // Use retry logic with exponential backoff
+      const addresses = await retryWithBackoff(async () => {
+        const response = await fetch(`${this.BIRDEYE_BASE_URL}/token_trending?limit=20`, {
+          headers: {
+            'Accept': 'application/json',
+            'X-API-KEY': this.BIRDEYE_API_KEY,
           }
-          // If no cache, return fallback addresses
-          return [
-            'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-            'So11111111111111111111111111111111111111112',  // SOL
-            'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',  // USDT
-            'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', // BONK
-            'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm'  // WIF
-          ]
+        })
+
+        if (!response.ok) {
+          console.error(`Birdeye API error: ${response.status} ${response.statusText}`)
+
+          // Handle rate limiting gracefully - don't retry
+          if (response.status === 429) {
+            console.log('Rate limit hit - using cached data or fallback')
+            // Return cached data if available, even if expired
+            if (this.trendingAddressesCache) {
+              // Extend cache to reduce rate limit pressure
+              this.trendingAddressesCache.expires = Date.now() + 30 * 60 * 1000 // 30 minutes
+              return this.trendingAddressesCache.addresses
+            }
+            // If no cache, return fallback addresses and cache them
+            const fallbackAddresses = [
+              'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+              'So11111111111111111111111111111111111111112',  // SOL
+              'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',  // USDT
+              'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', // BONK
+              'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm'  // WIF
+            ]
+            // Cache fallback addresses for 30 minutes to avoid repeated rate limit hits
+            this.trendingAddressesCache = {
+              addresses: fallbackAddresses,
+              expires: Date.now() + 30 * 60 * 1000 // 30 minutes
+            }
+            return fallbackAddresses
+          }
+
+          // Create error with status for retry logic
+          const error = new Error(`Birdeye API error: ${response.status}`)
+          ;(error as any).status = response.status
+          ;(error as any).response = { status: response.status }
+          throw error
         }
-        
-        throw new Error(`Birdeye API error: ${response.status}`)
-      }
 
-      const data: BirdeyeTrendingResponse = await response.json()
-      
-      if (!data.success || !data.data?.tokens) {
-        console.error('Birdeye API returned unsuccessful response', data)
-        throw new Error('Birdeye API unsuccessful response')
-      }
+        const data: BirdeyeTrendingResponse = await response.json()
 
-      const addresses = data.data.tokens
-        .slice(0, 20)
-        .map(token => token.address)
+        if (!data.success || !data.data?.tokens) {
+          console.error('Birdeye API returned unsuccessful response', data)
+          throw new Error('Birdeye API unsuccessful response')
+        }
+
+        return data.data.tokens
+          .slice(0, 20)
+          .map(token => token.address)
+
+      }, { maxRetries: 2, baseDelay: 1000, maxDelay: 5000 })
 
       // Cache trending addresses for 1 hour
       this.trendingAddressesCache = {
@@ -187,14 +200,12 @@ export class TrendingAPI {
         expires: Date.now() + this.CACHE_DURATION
       }
 
-      // console.log(`Cached ${addresses.length} trending addresses for 1 hour`)
       return addresses
 
     } catch (error) {
-      console.error('Failed to fetch trending addresses from Birdeye:', error)
+      console.error('Failed to fetch trending addresses from Birdeye after retries:', error)
       // Return fallback addresses if available
       if (this.trendingAddressesCache) {
-        // console.log('Using expired trending addresses cache as fallback')
         return this.trendingAddressesCache.addresses
       }
       throw error
@@ -209,12 +220,15 @@ export class TrendingAPI {
     for (let i = 0; i < addresses.length; i++) {
       const address = addresses[i]
       try {
-        // Fetch token data from DexScreener
-        
-        const dexData = await DexScreenerAPI.getTokenData(address)
+        // Fetch token data from DexScreener with retry logic
+        const dexData = await retryWithBackoff(
+          async () => await DexScreenerAPI.getTokenData(address),
+          { maxRetries: 2, baseDelay: 500, maxDelay: 2000 }
+        )
+
         if (dexData && dexData.pairs && dexData.pairs.length > 0) {
           const parsedData = DexScreenerAPI.parseTokenData(dexData, address)
-          
+
           if (parsedData) {
             const trendingToken: TrendingToken = {
               address: address,
@@ -228,18 +242,18 @@ export class TrendingAPI {
               network: 'solana',
               rank: i + 1
             }
-            
+
             trendingTokens.push(trendingToken)
           }
         }
-        
-        // Add small delay to avoid rate limiting
+
+        // Add delay to avoid rate limiting
         if (i < addresses.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100))
+          await new Promise(resolve => setTimeout(resolve, 200))
         }
-        
+
       } catch (error) {
-        console.error(`Failed to fetch DexScreener data for ${address}:`, error)
+        console.error(`Failed to fetch DexScreener data for ${address} after retries:`, error)
         // Continue with next token instead of failing completely
       }
     }

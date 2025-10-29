@@ -107,9 +107,9 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
                           token.id.slice(0, 8)
                         }
                       </span>
-                      <button 
+                      <button
                         onClick={copyAddress}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground cursor-pointer"
                         title={copiedAddress ? "Copied!" : "Copy address"}
                       >
                         <Copy className="h-3 w-3" />

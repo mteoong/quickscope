@@ -18,29 +18,59 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
   const [trendingTokens, setTrendingTokens] = useState<TrendingToken[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Fetch trending tokens
+  // Fetch trending tokens with retry logic
   useEffect(() => {
     const fetchTrending = async (showLoading = false) => {
       if (showLoading) setIsLoading(true)
-      
-      try {
-        const response = await fetch('/api/trending')
-        const data = await response.json()
-        
-        if (data.success) {
-          setTrendingTokens(data.data)
-        } else {
-          console.error('Trending API error:', data.error)
-          // Only clear tokens on initial load failure, keep existing data on updates
-          if (showLoading) setTrendingTokens([])
+
+      let retries = 0
+      const maxRetries = 3
+
+      while (retries <= maxRetries) {
+        try {
+          const response = await fetch('/api/trending')
+
+          // Check if response is ok
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+
+          const data = await response.json()
+
+          if (data.success) {
+            setTrendingTokens(data.data)
+            break // Success - exit retry loop
+          } else {
+            console.error('Trending API error:', data.error)
+
+            // If this is the last retry or initial load, clear tokens
+            if (retries === maxRetries) {
+              if (showLoading) setTrendingTokens([])
+            } else {
+              // Retry after delay
+              retries++
+              const delay = Math.min(1000 * Math.pow(2, retries - 1), 5000) // Exponential backoff, max 5s
+              console.log(`Retrying trending fetch (${retries}/${maxRetries}) in ${delay}ms...`)
+              await new Promise(resolve => setTimeout(resolve, delay))
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to fetch trending tokens (attempt ${retries + 1}/${maxRetries + 1}):`, error)
+
+          if (retries === maxRetries) {
+            // Final retry failed - keep existing data or clear on initial load
+            if (showLoading) setTrendingTokens([])
+            break
+          } else {
+            // Retry after delay
+            retries++
+            const delay = Math.min(1000 * Math.pow(2, retries - 1), 5000) // Exponential backoff, max 5s
+            await new Promise(resolve => setTimeout(resolve, delay))
+          }
         }
-      } catch (error) {
-        console.error('Failed to fetch trending tokens:', error)
-        // Only clear tokens on initial load failure, keep existing data on updates
-        if (showLoading) setTrendingTokens([])
-      } finally {
-        if (showLoading) setIsLoading(false)
       }
+
+      if (showLoading) setIsLoading(false)
     }
 
     // Initial fetch with loading state

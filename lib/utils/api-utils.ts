@@ -55,7 +55,6 @@ export async function retryWithBackoff<T>(
         delay = Math.min(retryAfter, maxDelay)
       }
 
-      console.log(`[RetryBackoff] Attempt ${attempt + 1}/${maxRetries + 1} failed, retrying in ${delay}ms...`)
       await sleep(delay)
     }
   }
@@ -126,7 +125,6 @@ export async function deduplicateRequest<T>(
   // Check if there's already a pending request with this key
   const existing = pendingRequests.get(key)
   if (existing) {
-    console.log(`[Deduplication] Using existing request for key: ${key}`)
     return existing.promise
   }
 

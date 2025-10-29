@@ -14,8 +14,6 @@ interface HoldersTradersCardProps {
 }
 
 export function HoldersTradersCard({ tokenAddress, network = "solana" }: HoldersTradersCardProps = {}) {
-  console.log('🔍 [HoldersTradersCard] Component rendered with tokenAddress:', tokenAddress, 'network:', network)
-  
   const [activeTab, setActiveTab] = useState("transactions")
   const [traders, setTraders] = useState<TraderData[]>([])
   const [transactions, setTransactions] = useState<TokenTransaction[]>([])
@@ -28,37 +26,21 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
   // Direct fetch function (no debounce for testing)
   const fetchTraders = useCallback(async (tokenAddr: string) => {
     setIsLoadingTraders(true)
-    console.log('[Traders] Loading state set to true - DIRECT CALL')
     try {
-      console.log('[Traders] About to call TokenDataService.getTopTraders')
       const tradersData = await TokenDataService.getTopTraders(tokenAddr)
-      console.log('[Traders] API call completed, received data:', tradersData?.length || 0, 'items')
       setTraders(tradersData)
-      console.log('[Traders] State updated with traders data')
     } catch (error) {
       console.error('[Traders] Failed to fetch traders:', error)
-      console.error('[Traders] Error details:', {
-        tokenAddress: tokenAddr,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorType: typeof error,
-        stack: error instanceof Error ? error.stack : undefined,
-        environment: typeof window === 'undefined' ? 'server' : 'client'
-      })
       setTraders([])
     } finally {
       setIsLoadingTraders(false)
-      console.log('[Traders] Loading state set to false - DIRECT CALL')
     }
   }, [])
 
   const fetchTransactions = useCallback(async (tokenAddr: string) => {
     setIsLoadingTransactions(true)
-    console.log('[Transactions] Loading state set to true - DIRECT CALL')
     try {
-      console.log('[Transactions] About to call BirdeyeAPI.getTokenTransactions')
       const rawTransactions = await BirdeyeAPI.getTokenTransactions(tokenAddr, 30)
-      console.log('[Transactions] API call completed, received data:', rawTransactions?.length || 0, 'items')
-      console.log('[Transactions] Sample timestamp:', rawTransactions[0]?.block_unix_time, 'Current time:', Math.floor(Date.now()/1000))
       setTransactions(rawTransactions.map((tx: any) => ({
         type: (tx.tx_type || tx.side || 'buy').toUpperCase(),
         amount: tx.to?.ui_amount || tx.volume || 0,
@@ -69,53 +51,40 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
         time: tx.block_unix_time || Date.now() / 1000,
         isRealTime: false
       })))
-      console.log('[Transactions] State updated with transactions data')
     } catch (error) {
       console.error('[Transactions] Failed to fetch transactions:', error)
       setTransactions([])
     } finally {
       setIsLoadingTransactions(false)
-      console.log('[Transactions] Loading state set to false - DIRECT CALL')
     }
   }, [])
 
   const debouncedFetchTransactionsOLD = useCallback(
     debounce(async (tokenAddr: string) => {
       setIsLoadingTransactions(true)
-      console.log('[Transactions] Loading state set to true')
       try {
-        console.log('[Transactions] Fetching from Birdeye API for token:', tokenAddr)
-        console.log('[Transactions] Environment check:', {
-          isClient: typeof window !== 'undefined',
-          hasEnvVars: {
-            BIRDEYE_API_KEY_TRANSACTIONS: !!process.env.BIRDEYE_API_KEY_TRANSACTIONS,
-            BIRDEYE_API_KEY_HOLDERS: !!process.env.BIRDEYE_API_KEY_HOLDERS,
-            BIRDEYE_API_KEY_HISTORICAL: !!process.env.BIRDEYE_API_KEY_HISTORICAL
-          }
-        })
         const rawTransactions = await BirdeyeAPI.getTokenTransactions(tokenAddr, 30)
-        console.log('[Transactions] API call completed, received data:', rawTransactions?.length || 0, 'items')
-        
+
         // Parse Birdeye transactions to TokenTransaction format
         const parsedTransactions: TokenTransaction[] = rawTransactions.map((tx: any) => {
           // Determine if it's a buy or sell based on tx_type or side
           const isSell = tx.tx_type === 'sell' || tx.side === 'sell'
-          
+
           // For token amount, use the PENGU token amount (to.ui_amount for buys, from.ui_amount for sells)
-          const tokenAmount = isSell 
+          const tokenAmount = isSell
             ? tx.from?.ui_amount || 0  // PENGU being sold
             : tx.to?.ui_amount || 0    // PENGU being bought
-          
+
           // For price per token, use volume_usd / volume (volume is the token amount)
-          const pricePerToken = tx.volume && tx.volume > 0 
-            ? tx.volume_usd / tx.volume 
+          const pricePerToken = tx.volume && tx.volume > 0
+            ? tx.volume_usd / tx.volume
             : 0
-          
+
           return {
             time: tx.block_unix_time * 1000 || Date.now(), // Convert to milliseconds
             type: isSell ? 'SELL' : 'BUY',
             amount: tokenAmount,
-            pricePerToken: pricePerToken, 
+            pricePerToken: pricePerToken,
             usdValue: tx.volume_usd || 0,
             trader: tx.owner || '—',
             txSignature: tx.tx_hash || '',
@@ -124,22 +93,12 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
           }
         })
 
-        console.log(`[Transactions] Loaded ${parsedTransactions.length} transactions`)
         setTransactions(parsedTransactions)
-        console.log('[Transactions] State updated with transactions data')
       } catch (error) {
         console.error('[Transactions] Failed to fetch transactions:', error)
-        console.error('[Transactions] Error details:', {
-          tokenAddress: tokenAddr,
-          errorMessage: error instanceof Error ? error.message : String(error),
-          errorType: typeof error,
-          stack: error instanceof Error ? error.stack : undefined,
-          environment: typeof window === 'undefined' ? 'server' : 'client'
-        })
         setTransactions([])
       } finally {
         setIsLoadingTransactions(false)
-        console.log('[Transactions] Loading state set to false')
       }
     }, 600),
     []
@@ -148,27 +107,14 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
   const debouncedFetchHolders = useCallback(
     debounce(async (tokenAddr: string) => {
       setIsLoadingHolders(true)
-      console.log('[Holders] Loading state set to true')
       try {
-        console.log('[Holders] Fetching top 20 holders for token:', tokenAddr)
         const holdersData = await TokenDataService.getTokenLargestAccounts(tokenAddr, network)
-        console.log(`[Holders] API call completed, received data: ${holdersData?.length || 0} items`)
         setHolders(holdersData)
-        console.log('[Holders] State updated with holders data')
-        console.log(`[Holders] Loaded ${holdersData.length} holders`)
       } catch (error) {
         console.error('[Holders] Failed to fetch holders:', error)
-        console.error('[Holders] Error details:', {
-          tokenAddress: tokenAddr,
-          errorMessage: error instanceof Error ? error.message : String(error),
-          errorType: typeof error,
-          stack: error instanceof Error ? error.stack : undefined,
-          environment: typeof window === 'undefined' ? 'server' : 'client'
-        })
         setHolders([])
       } finally {
         setIsLoadingHolders(false)
-        console.log('[Holders] Loading state set to false')
       }
     }, 600),
     [network]
@@ -181,7 +127,6 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
       return
     }
 
-    console.log('HoldersTradersCard: Starting traders fetch for', tokenAddress)
     fetchTraders(tokenAddress)
 
   }, [tokenAddress, fetchTraders])
@@ -193,7 +138,6 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
       return
     }
 
-    console.log('HoldersTradersCard: Starting transactions fetch for', tokenAddress)
     fetchTransactions(tokenAddress)
 
   }, [tokenAddress, network, fetchTransactions])
@@ -205,7 +149,6 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
       return
     }
 
-    console.log('HoldersTradersCard: Starting holders fetch for', tokenAddress)
     debouncedFetchHolders(tokenAddress)
 
   }, [tokenAddress, network, debouncedFetchHolders])
@@ -267,20 +210,12 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                 // Calculate time difference in seconds
                 const nowSeconds = Math.floor(Date.now() / 1000)
                 const timeAgo = Math.max(0, nowSeconds - tx.time)
-                
-                console.log('[Timestamp Debug]', {
-                  txTime: tx.time,
-                  txTimeDate: new Date(tx.time * 1000).toISOString(),
-                  nowSeconds: nowSeconds,
-                  nowDate: new Date(nowSeconds * 1000).toISOString(),
-                  timeAgo: timeAgo
-                })
-                
-                const timeString = timeAgo < 60 ? `${timeAgo}s` : 
+
+                const timeString = timeAgo < 60 ? `${timeAgo}s` :
                                  timeAgo < 3600 ? `${Math.round(timeAgo/60)}m` :
                                  timeAgo < 86400 ? `${Math.round(timeAgo/3600)}h` :
                                  `${Math.round(timeAgo/86400)}d`
-                
+
                 const isBuy = tx.type === 'BUY'
                 const colorClass = isBuy ? 'text-green-400' : 'text-red-400'
                 

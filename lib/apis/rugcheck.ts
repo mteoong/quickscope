@@ -42,8 +42,7 @@ export class RugCheckAPI {
   static async getTokenReport(address: string): Promise<RugCheckResponse | null> {
     try {
       const url = `${this.BASE_URL}/tokens/${address}/report`
-      console.log('[RugCheck] Fetching token report from:', url)
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -59,7 +58,6 @@ export class RugCheckAPI {
       }
 
       const data = await response.json()
-      console.log('[RugCheck] Received token report:', data)
       return data
     } catch (error) {
       console.error('RugCheck API request failed:', error)
