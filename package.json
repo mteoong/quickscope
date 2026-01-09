@@ -19,7 +19,7 @@
     "geist": "^1.4.2",
     "lightweight-charts": "^5.0.8",
     "lucide-react": "^0.542.0",
-    "next": "15.2.4",
+    "next": "15.2.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-resizable-panels": "^3.0.5",
