@@ -46,22 +46,20 @@ export function SidebarSearch({ onAddressSubmit }: SidebarSearchProps) {
   }
 
   return (
-    <div className="p-3 border-b border-sidebar-border">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Paste token contract address..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyPress={handleKeyPress}
-          className="pl-10 bg-background border-border"
-        />
-        {isValidating && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-          </div>
-        )}
-      </div>
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Paste token contract address..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyPress={handleKeyPress}
+        className="pl-10 bg-background border-border rounded-full"
+      />
+      {isValidating && (
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+        </div>
+      )}
     </div>
   )
 }

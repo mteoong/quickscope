@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { formatNumber, formatPrice } from "@/lib/utils"
 import type { TokenSummary, TokenData } from "@/lib/types"
 import { Copy, Twitter, Globe, Circle, Star, Shield, AlertTriangle, ExternalLink } from "lucide-react"
@@ -29,7 +27,7 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
 
   const formatPriceChange = (change: number) => {
     const safeChange = Number(change ?? 0)
-    const color = safeChange >= 0 ? 'text-green-400' : 'text-red-400'
+    const color = safeChange >= 0 ? 'text-[color:var(--buy)]' : 'text-[color:var(--sell)]'
     const sign = safeChange >= 0 ? '+' : ''
     return `${color} ${sign}${safeChange.toFixed(2)}%`
   }
@@ -70,15 +68,15 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
 
   return (
     <div className="space-y-2">
-      <Card className="p-0 overflow-hidden mb-2">
+      <div className="p-0 overflow-hidden">
         <div className="flex">
-          <div className="flex items-center justify-center w-8 bg-card border-r border-border">
+          <div className="flex items-center justify-center w-8 bg-transparent border-r border-border/30">
             <button className="text-muted-foreground hover:text-yellow-400 transition-colors">
               <Star className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="w-20 h-20 flex-shrink-0 bg-card border-r border-border p-2">
+          <div className="w-20 h-20 flex-shrink-0 bg-transparent border-r border-border/30 p-2">
             <img
               src={displayImage || "/placeholder.svg"}
               alt={displayName}
@@ -226,7 +224,7 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
                     <div className="text-xs font-medium">${formatNumber(displayVol)}</div>
                   </div>
 
-                  <div className="w-0.5 h-8 bg-muted-foreground opacity-30"></div>
+                  <div className="w-px h-8 bg-muted-foreground opacity-20"></div>
 
                   {/* Price changes */}
                   <div className="text-center">
@@ -252,7 +250,7 @@ export function TokenHeader({ token, tokenData }: TokenHeaderProps) {
             </div>
           </div>
         </div>
-      </Card>
+      </div>
       
       {/* Loading indicator */}
       {tokenData?.isLoading && (

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, memo } from "react"
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { VolumeMarketCapService, VolumeMarketCapDataPoint } from "@/lib/services/volume-marketcap-service"
 
 interface VolumeMarketCapChartsProps {
   tokenAddress: string
   className?: string
+  layout?: 'stack' | 'split'
 }
 
 type Timeframe = '1W' | '2W' | '1M'
@@ -41,7 +42,7 @@ function formatExactUSD(value: number): string {
   }).format(value)
 }
 
-export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMarketCapChartsProps) {
+function VolumeMarketCapChartsComponent({ tokenAddress, className = "", layout = 'stack' }: VolumeMarketCapChartsProps) {
   console.log('VolumeMarketCapCharts: Component rendered with tokenAddress:', tokenAddress)
   
   const [timeframe, setTimeframe] = useState<Timeframe>('1W')
@@ -50,6 +51,8 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
   const [error, setError] = useState<string | null>(null)
   const [isMarketCapFDV, setIsMarketCapFDV] = useState(false)
 
+  const lastFetchKeyRef = useRef<string | null>(null)
+
   useEffect(() => {
     const fetchData = async () => {
       if (!tokenAddress) {
@@ -57,6 +60,11 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
         return
       }
       
+      const fetchKey = `${tokenAddress}-${timeframe}`
+      if (lastFetchKeyRef.current === fetchKey && data.length > 0) {
+        return
+      }
+
       console.log('VolumeMarketCapCharts: Starting fetch for', tokenAddress, 'timeframe:', timeframe)
       setIsLoading(true)
       setError(null)
@@ -80,6 +88,7 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
         }))
         
         setData(chartData)
+        lastFetchKeyRef.current = fetchKey
         console.log('VolumeMarketCapCharts: Chart data loaded:', chartData)
       } catch (err) {
         console.error('VolumeMarketCapCharts: Error fetching data:', err)
@@ -90,12 +99,12 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
     }
 
     fetchData()
-  }, [tokenAddress, timeframe])
+  }, [tokenAddress, timeframe, data.length])
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-background/95 border border-border rounded-lg p-3 shadow-lg">
+        <div className="bg-background/90 border border-border/40 rounded-lg p-3 shadow-lg">
           <p className="text-sm font-medium text-foreground mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
@@ -110,21 +119,30 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
 
   if (isLoading) {
     return (
-      <div className={`bg-card border border-border p-4 overflow-hidden ${className}`}>
-        <h3 className="text-lg font-semibold mb-2">Volume & Market Cap</h3>
-        <div className="flex gap-1 mb-4">
-          {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
-            <button
-              key={tf}
-              className="px-2 py-1 text-xs bg-muted rounded cursor-not-allowed opacity-50"
-              disabled
-            >
-              {tf}
-            </button>
-          ))}
+      <div className={`p-2 overflow-hidden ${className}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold">Volume & Market Cap</h3>
+          <div className="flex gap-1">
+            {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
+              <button
+                key={tf}
+                className="px-2 py-1 text-xs bg-muted rounded cursor-not-allowed opacity-50"
+                disabled
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="h-80 flex items-center justify-center text-muted-foreground">
-          Loading charts...
+        <div className={`${layout === 'split' ? 'grid grid-cols-2 gap-4' : 'space-y-6'}`}>
+          <div className="h-64 flex items-center justify-center text-muted-foreground">
+            Loading charts...
+          </div>
+          {layout === 'split' && (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              Loading charts...
+            </div>
+          )}
         </div>
       </div>
     )
@@ -132,25 +150,34 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
 
   if (error) {
     return (
-      <div className={`bg-card border border-border p-4 overflow-hidden ${className}`}>
-        <h3 className="text-lg font-semibold mb-2">Volume & Market Cap</h3>
-        <div className="flex gap-1 mb-4">
-          {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
-                timeframe === tf
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted hover:bg-muted/80'
-              }`}
-            >
-              {tf}
-            </button>
-          ))}
+      <div className={`p-2 overflow-hidden ${className}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold">Volume & Market Cap</h3>
+          <div className="flex gap-1">
+            {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                  timeframe === tf
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted hover:bg-muted/80'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="h-80 flex items-center justify-center text-red-400">
-          {error}
+        <div className={`${layout === 'split' ? 'grid grid-cols-2 gap-4' : 'space-y-6'}`}>
+          <div className="h-64 flex items-center justify-center text-red-400">
+            {error}
+          </div>
+          {layout === 'split' && (
+            <div className="h-64 flex items-center justify-center text-red-400">
+              {error}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -158,16 +185,51 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
 
   if (data.length === 0) {
     return (
-      <div className={`bg-card border border-border p-4 overflow-hidden ${className}`}>
-        <h3 className="text-lg font-semibold mb-2">Volume & Market Cap</h3>
-        <div className="flex gap-1 mb-4">
+      <div className={`p-2 overflow-hidden ${className}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold">Volume & Market Cap</h3>
+          <div className="flex gap-1">
+            {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                  timeframe === tf
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted hover:bg-muted/80'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={`${layout === 'split' ? 'grid grid-cols-2 gap-4' : 'space-y-6'}`}>
+          <div className="h-64 flex items-center justify-center text-muted-foreground">
+            No data available
+          </div>
+          {layout === 'split' && (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              No data available
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`p-2 overflow-hidden ${className}`}>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-lg font-semibold">Volume & {isMarketCapFDV ? 'FDV' : 'Market Cap'}</h3>
+        <div className="flex gap-1">
           {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
-              className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
-                timeframe === tf
-                  ? 'bg-primary text-primary-foreground'
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                timeframe === tf 
+                  ? 'bg-primary text-primary-foreground' 
                   : 'bg-muted hover:bg-muted/80'
               }`}
             >
@@ -175,37 +237,13 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
             </button>
           ))}
         </div>
-        <div className="h-80 flex items-center justify-center text-muted-foreground">
-          No data available
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`bg-card border border-border p-4 overflow-hidden ${className}`}>
-      <h3 className="text-lg font-semibold mb-2">Volume & {isMarketCapFDV ? 'FDV' : 'Market Cap'}</h3>
-      <div className="flex gap-1 mb-4">
-        {(['1W', '2W', '1M'] as Timeframe[]).map((tf) => (
-          <button
-            key={tf}
-            onClick={() => setTimeframe(tf)}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              timeframe === tf 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted hover:bg-muted/80'
-            }`}
-          >
-            {tf}
-          </button>
-        ))}
       </div>
 
-      <div className="space-y-6">
+      <div className={`${layout === 'split' ? 'grid grid-cols-2 gap-4' : 'space-y-6'}`}>
         {/* Volume Bar Chart */}
         <div>
           <h4 className="text-sm font-medium text-muted-foreground mb-2">Daily Volume</h4>
-          <div className="h-40 overflow-hidden">
+          <div className="h-64 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
@@ -225,6 +263,7 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
                   fill="#3B82F6"
                   name="Volume"
                   radius={[2, 2, 0, 0]}
+                  isAnimationActive={false}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -236,7 +275,7 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
           <h4 className="text-sm font-medium text-muted-foreground mb-2">
             Daily {isMarketCapFDV ? 'FDV' : 'Market Cap'}
           </h4>
-          <div className="h-40 overflow-hidden">
+          <div className="h-64 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
@@ -259,6 +298,7 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
                   strokeWidth={2}
                   dot={{ fill: '#10B981', strokeWidth: 2, r: 3 }}
                   activeDot={{ r: 5, fill: '#10B981' }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -268,3 +308,5 @@ export function VolumeMarketCapCharts({ tokenAddress, className = "" }: VolumeMa
     </div>
   )
 }
+
+export const VolumeMarketCapCharts = memo(VolumeMarketCapChartsComponent)

@@ -1,20 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import type { SidebarItem } from "@/lib/types"
 import type { TrendingToken } from "@/lib/apis/trending"
 import { getTrendingUpdateRate } from "@/lib/config/api-config"
 
 interface TabbedTokenListProps {
-  trendingItems: SidebarItem[]
-  watchlistItems: SidebarItem[]
-  onSelect: (token: SidebarItem) => void
   onTrendingSelect: (address: string, type: 'token' | 'pool', imageUrl?: string) => void
 }
 
-export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTrendingSelect }: TabbedTokenListProps) {
-  const [activeTab, setActiveTab] = useState<"trending" | "watchlist">("trending")
+export function TabbedTokenList({ onTrendingSelect }: TabbedTokenListProps) {
   const [trendingTokens, setTrendingTokens] = useState<TrendingToken[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
@@ -101,127 +95,69 @@ export function TabbedTokenList({ trendingItems, watchlistItems, onSelect, onTre
     return network.slice(0, 3).toUpperCase()
   }
 
-  const currentItems = activeTab === "watchlist" ? watchlistItems : []
-
   return (
-    <div className="p-3">
-      <div className="flex gap-1 mb-3">
-        <Button
-          variant={activeTab === "trending" ? "default" : "ghost"}
-          size="sm"
-          className="flex-1 h-7 text-xs"
-          onClick={() => setActiveTab("trending")}
-        >
-          Trending
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex-1 h-7 text-xs opacity-50 !cursor-not-allowed hover:!cursor-not-allowed hover:bg-transparent"
-          disabled
-        >
-          Watchlist
-        </Button>
+    <div className="py-4">
+      <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Trending Tokens
       </div>
-
-      <div className="space-y-1">
-        {activeTab === "trending" ? (
-          <>
-            {isLoading ? (
-              <div className="text-center text-muted-foreground text-xs py-4">
-                Loading trending...
-              </div>
-            ) : trendingTokens.length > 0 ? (
-              trendingTokens.map((token, index) => (
-                <div key={`trending-${token.address}`}>
-                  <div
-                    className="flex items-center p-2 rounded hover:bg-blue-500/10 cursor-pointer text-xs"
-                    onClick={() => onTrendingSelect(token.address, 'token', token.image)}
-                  >
-                  <div className="min-w-0 flex-1 flex flex-col">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <img
-                          src={token.image || "/placeholder.svg"}
-                          alt={token.symbol}
-                          className="w-4 h-4 rounded-full flex-shrink-0"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = "/placeholder.svg"
-                          }}
-                        />
-                        <span className="font-medium truncate text-xs">{token.name}</span>
-                      </div>
-                      <div className="text-foreground text-xs font-medium">
-                        ${(() => {
-                          const price = Number(token.price ?? 0)
-                          // console.log('Trending Token Price Debug:', { price, symbol: token.symbol })
-                          
-                          if (price >= 1) {
-                            const result = price.toPrecision(6)
-                            // console.log('≥$1 toPrecision(6):', result)
-                            return result
-                          } else if (price >= 0.0001) {
-                            const result = price.toFixed(5)
-                            // console.log('≥0.0001 toFixed(5):', result)
-                            return result
-                          } else {
-                            const result = price.toExponential(2)
-                            // console.log('<0.0001 toExponential(2):', result)
-                            return result
-                          }
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px]">
-                        <span className="text-muted-foreground">24h:</span> <span className={((token.priceChange24h ?? 0) >= 0) ? "text-green-400" : "text-red-400"}>{((token.priceChange24h ?? 0) >= 0) ? "+" : ""}{((token.priceChange24h ?? 0) > 999) ? "999+" : Number(token.priceChange24h ?? 0).toFixed(1)}%</span>
-                      </div>
-                      <div className="text-muted-foreground text-[10px]">
-                        MC: ${((token.marketCap ?? 0) > 1000000) ? (Number(token.marketCap ?? 0) / 1000000).toFixed(1) + 'M' : (Number(token.marketCap ?? 0) / 1000).toFixed(0) + 'K'}
-                      </div>
-                    </div>
+      <div className="divide-y divide-border/50">
+        {isLoading ? (
+          <div className="text-center text-muted-foreground text-xs py-4">
+            Loading trending...
+          </div>
+        ) : trendingTokens.length > 0 ? (
+          trendingTokens.map((token, index) => (
+            <div key={`trending-${token.address}`}>
+              <div
+                className={`flex items-center px-3 py-2 cursor-pointer text-xs ${
+                  index % 2 === 0 ? "bg-[#0c0f14]" : "bg-[#0e1218]"
+                } hover:bg-[#141923]`}
+                onClick={() => onTrendingSelect(token.address, 'token', token.image)}
+              >
+              <div className="min-w-0 flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <img
+                      src={token.image || "/placeholder.svg"}
+                      alt={token.symbol}
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = "/placeholder.svg"
+                      }}
+                    />
+                    <span className="font-medium truncate text-xs">{token.name}</span>
                   </div>
+                  <div className="text-foreground text-xs font-medium">
+                    ${(() => {
+                      const price = Number(token.price ?? 0)
+                      
+                      if (price >= 1) {
+                        return price.toPrecision(6)
+                      } else if (price >= 0.0001) {
+                        return price.toFixed(5)
+                      } else {
+                        return price.toExponential(2)
+                      }
+                    })()}
                   </div>
-                  {index < trendingTokens.length - 1 && (
-                    <div className="border-b border-border/50 mx-2"></div>
-                  )}
                 </div>
-              ))
-            ) : (
-              <div className="text-center text-muted-foreground text-xs py-4">
-                No trending tokens found
-              </div>
-            )}
-          </>
-        ) : (
-          currentItems.map((item, index) => (
-            <div
-              key={`watchlist-${item.address}`}
-              className="flex items-center justify-between p-2 rounded hover:bg-accent/50 cursor-pointer text-xs"
-              onClick={() => onSelect(item)}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="text-muted-foreground text-[10px] w-4 text-center">{index + 1}</div>
-                <img
-                  src={item.logoUrl || "/placeholder.svg"}
-                  alt={item.symbol}
-                  className="w-4 h-4 rounded-full flex-shrink-0"
-                />
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{item.symbol}</div>
-                  <div className="text-muted-foreground text-[10px] truncate">${Number(item.price ?? 0).toFixed(6)}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px]">
+                    <span className="text-muted-foreground">24h:</span> <span className={((token.priceChange24h ?? 0) >= 0) ? "text-[color:var(--buy)]" : "text-[color:var(--sell)]"}>{((token.priceChange24h ?? 0) >= 0) ? "+" : ""}{((token.priceChange24h ?? 0) > 999) ? "999+" : Number(token.priceChange24h ?? 0).toFixed(1)}%</span>
+                  </div>
+                  <div className="text-muted-foreground text-[10px]">
+                    MC: ${((token.marketCap ?? 0) > 1000000) ? (Number(token.marketCap ?? 0) / 1000000).toFixed(1) + 'M' : (Number(token.marketCap ?? 0) / 1000).toFixed(0) + 'K'}
+                  </div>
                 </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className={`text-[10px] ${((item.pct24h ?? 0) >= 0) ? "text-green-400" : "text-red-400"}`}>
-                  {((item.pct24h ?? 0) >= 0) ? "+" : ""}
-                  {Number(item.pct24h ?? 0).toFixed(1)}%
-                </div>
-                <div className="text-muted-foreground text-[10px]">${(Number(item.vol24h ?? 0) / 1000).toFixed(0)}K</div>
               </div>
             </div>
           ))
+        ) : (
+          <div className="text-center text-muted-foreground text-xs py-4">
+            No trending tokens found
+          </div>
         )}
       </div>
     </div>

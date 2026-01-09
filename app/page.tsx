@@ -10,11 +10,10 @@ import { SecurityMetricsGrid } from "@/components/security-metrics-grid"
 import { TradingPanel } from "@/components/trading-panel"
 import { HoldersTradersCard } from "@/components/holders-traders-card"
 import { TokenInfoCard } from "@/components/token-info-card"
-import { VolumeMarketCapCharts } from "@/components/volume-marketcap-charts"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
-import { mockTokens, mockSelectedToken } from "@/lib/mock-data"
+import { mockSelectedToken } from "@/lib/mock-data"
 import { TokenDataService } from "@/lib/token-data-service"
-import type { TokenSummary, SidebarItem, TokenData } from "@/lib/types"
+import type { TokenSummary, TokenData } from "@/lib/types"
 // import { getUpdateRate } from "@/lib/config/api-config" // Disabled for debugging
 
 // Force dynamic rendering to prevent stale data issues
@@ -26,28 +25,6 @@ export default function CryptoTerminal() {
   const [customAddress, setCustomAddress] = useState<{ address: string; type: 'token' | 'pool' } | null>(null)
   const [tokenData, setTokenData] = useState<TokenData | null>(null)
   const [layoutMode, setLayoutMode] = useState<'normal' | 'chart-max' | 'holders-max'>('normal')
-
-  const handleTokenSelect = (token: SidebarItem) => {
-    const tokenSummary: TokenSummary = {
-      id: token.address,
-      name: token.symbol,
-      symbol: token.symbol,
-      logoUrl: token.logoUrl,
-      network: "SOL",
-      priceUsd: token.price,
-      change24hPct: token.pct24h,
-      mcUsd: 5686000,
-      liqUsd: 92800,
-      vol24hUsd: 9359378,
-      fees24h: "0.14 SOL",
-      dex: "Raydium",
-      pairTitle: `${token.symbol}/SOL on Raydium`,
-      candleOHLC: mockSelectedToken.candleOHLC,
-    }
-    setSelectedToken(tokenSummary)
-    setCustomAddress(null) // Clear custom address when selecting from list
-    setTokenData(null) // Clear token data when selecting from list
-  }
 
   const handleAddressSubmit = React.useCallback(async (address: string, type: 'token' | 'pool', imageUrl?: string) => {
     setCustomAddress({ address, type })
@@ -142,29 +119,26 @@ export default function CryptoTerminal() {
         {/* Left Sidebar - Fixed width, fixed height */}
         <div className="w-[220px] bg-sidebar border-r border-sidebar-border flex flex-col h-full flex-shrink-0">
           {/* Fixed header */}
-          <div className="flex items-center gap-2 p-3 border-b border-sidebar-border flex-shrink-0">
-            <Crosshair className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold text-sidebar-foreground uppercase tracking-widest font-mono flex-1">QUICKSCOPE</h1>
-          </div>
-          
-          {/* Fixed search */}
-          <div className="flex-shrink-0">
-            <SidebarSearch onAddressSubmit={handleAddressSubmit} />
+          <div className="flex-shrink-0 border-b border-sidebar-border">
+            <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+              <Crosshair className="h-5 w-5 text-primary" />
+              <h1 className="text-lg font-bold text-sidebar-foreground uppercase tracking-widest font-mono flex-1">QUICKSCOPE</h1>
+            </div>
+            <div className="px-3 pb-3">
+              <SidebarSearch onAddressSubmit={handleAddressSubmit} />
+            </div>
           </div>
           
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
             <TabbedTokenList
-              trendingItems={mockTokens}
-              watchlistItems={mockTokens.slice(0, 5)}
-              onSelect={handleTokenSelect}
               onTrendingSelect={handleAddressSubmit}
             />
           </div>
           
           {/* Fixed sign-in button at bottom */}
           <div className="border-t border-sidebar-border p-3 flex-shrink-0 bg-sidebar">
-            <button className="w-full bg-primary text-primary-foreground py-2 px-4 rounded text-sm font-medium hover:bg-primary/90 transition-colors cursor-not-allowed">
+            <button className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors cursor-not-allowed">
               Sign In
             </button>
           </div>
@@ -172,25 +146,26 @@ export default function CryptoTerminal() {
 
         {/* Center Column */}
         <div className="flex-1 bg-background p-1 h-full flex flex-col overflow-hidden">
-          <div className="flex-shrink-0">
-            <TokenHeader 
-              token={selectedToken} 
-              tokenData={tokenData}
-              timeframe={timeframe} 
-              onTimeframeChange={setTimeframe} 
-            />
-          </div>
-          
-          <ResizablePanelGroup direction="vertical" className="flex-1 min-h-0" key={layoutMode}>
-            <ResizablePanel defaultSize={chartSize} minSize={30} maxSize={80}>
-              <div className="relative h-full">
-                <CandleChart 
-                  data={selectedToken.candleOHLC} 
-                  timeframe={timeframe}
-                  tokenAddress={customAddress?.address || '2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv'}
-                  tokenSymbol={selectedToken.symbol}
-                  addressType={customAddress?.type}
-                />
+          <div className="flex-1 min-h-0 flex flex-col divide-y divide-border/50">
+            <div className="flex-shrink-0">
+              <TokenHeader 
+                token={selectedToken} 
+                tokenData={tokenData}
+                timeframe={timeframe} 
+                onTimeframeChange={setTimeframe} 
+              />
+            </div>
+
+            <ResizablePanelGroup direction="vertical" className="flex-1 min-h-0" key={layoutMode}>
+              <ResizablePanel defaultSize={chartSize} minSize={30} maxSize={80}>
+                <div className="relative h-full">
+                  <CandleChart 
+                    data={selectedToken.candleOHLC} 
+                    timeframe={timeframe}
+                    tokenAddress={customAddress?.address || '2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv'}
+                    tokenSymbol={selectedToken.symbol}
+                    addressType={customAddress?.type}
+                  />
                 {/* Arrow controls positioned at bottom right */}
                 <div className="absolute bottom-2 right-2 flex flex-col gap-1 z-10">
                   <button
@@ -212,47 +187,55 @@ export default function CryptoTerminal() {
                     <ChevronDown className="h-4 w-4" />
                   </button>
                 </div>
-              </div>
-            </ResizablePanel>
-            
-            <ResizableHandle withHandle />
-            
-            <ResizablePanel defaultSize={holdersSize} minSize={20} maxSize={70}>
-              <div className="py-2 h-full overflow-hidden flex flex-col">
-                <div className="flex gap-2 flex-1 min-h-0 min-w-0">
-                  <div className="w-[30%] min-w-0 flex-shrink-0">
-                    <VolumeMarketCapCharts 
-                      tokenAddress={customAddress?.address || selectedToken.id}
-                      className="h-full"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
+                </div>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle />
+              
+              <ResizablePanel defaultSize={holdersSize} minSize={20} maxSize={70}>
+                <div className="py-2 h-full overflow-hidden flex flex-col">
+                  <div className="flex-1 min-h-0 min-w-0 p-2">
                     <HoldersTradersCard 
                       tokenAddress={customAddress?.address || selectedToken.id}
                       network={(customAddress?.address || selectedToken.id).startsWith('0x') ? 'ethereum' : 'solana'}
                     />
                   </div>
                 </div>
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
           
         </div>
 
         {/* Right Column - Trading interface */}
-        <div className="bg-sidebar border-l border-sidebar-border flex flex-col h-full overflow-y-auto scrollbar-hide">
-          <div className="p-2 space-y-2">
+        <div className="w-[320px] bg-sidebar border-l border-sidebar-border flex flex-col h-full overflow-y-auto scrollbar-hide">
+          <div className="divide-y divide-border/50">
+            <div className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Token Audit
+            </div>
             <SecurityMetricsGrid 
               key={tokenData?.address || 'loading'}
               tokenSecurity={tokenData?.security}
               isLoading={tokenData?.isLoading}
+              mode="score"
             />
-            <TradingPanel />
-            <TokenInfoCard 
-              tokenData={tokenData}
-              selectedTokenAddress={customAddress?.address || selectedToken.id}
-              selectedTokenSymbol={selectedToken.symbol}
+            <SecurityMetricsGrid 
+              key={`${tokenData?.address || 'loading'}-grid`}
+              tokenSecurity={tokenData?.security}
+              isLoading={tokenData?.isLoading}
+              mode="grid"
             />
+            <TradingPanel tokenSymbol={selectedToken.symbol} />
+            <div>
+              <div className="px-3 pt-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Token Info
+              </div>
+              <TokenInfoCard 
+                tokenData={tokenData}
+                selectedTokenAddress={customAddress?.address || selectedToken.id}
+                selectedTokenSymbol={selectedToken.symbol}
+              />
+            </div>
           </div>
         </div>
       </div>

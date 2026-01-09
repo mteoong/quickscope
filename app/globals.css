@@ -45,41 +45,42 @@ html, body {
 }
 
 :root.dark {
-  /* GeckoTerminal-inspired dark blue theme */
-  /* Matching the dark blue aesthetic of trading terminals */
-  --background: #0a0e1a; /* Dark blue background */
-  --foreground: #e1e5e9; /* Light blue-white text */
-  --card: #131820; /* Dark blue card background */
-  --card-foreground: #e1e5e9;
-  --popover: #131820;
-  --popover-foreground: #e1e5e9;
-  --primary: #fbbf24; /* Keep yellow/gold accent */
-  --primary-foreground: #0a0e1a;
-  --secondary: #1e293b; /* Dark blue-gray for borders and dividers */
-  --secondary-foreground: #e1e5e9;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8; /* Light blue-gray text */
-  --accent: #fbbf24;
-  --accent-foreground: #0a0e1a;
-  --destructive: #ef4444; /* Red */
-  --destructive-foreground: #e1e5e9;
-  --border: #1e293b; /* Dark blue-gray borders */
-  --input: #131820;
-  --ring: #fbbf24;
+  /* Dark exchange UI baseline */
+  --background: #0b0d12;
+  --foreground: #e6e9ef;
+  --card: #11141b;
+  --card-foreground: #e6e9ef;
+  --popover: #11141b;
+  --popover-foreground: #e6e9ef;
+  --primary: #7c6cff;
+  --primary-foreground: #f5f4ff;
+  --secondary: #151922;
+  --secondary-foreground: #e6e9ef;
+  --muted: #0f131a;
+  --muted-foreground: #9aa3b2;
+  --accent: #2be6a1;
+  --accent-foreground: #0b0d12;
+  --destructive: #ff4d4f;
+  --destructive-foreground: #e6e9ef;
+  --border: #20242e;
+  --input: #11141b;
+  --ring: #7c6cff;
   /* Trading terminal chart colors */
-  --chart-1: #fbbf24; /* Yellow/gold */
-  --chart-2: #22c55e; /* Green */
-  --chart-3: #ef4444; /* Red */
-  --chart-4: #3b82f6; /* Blue */
-  --chart-5: #f97316; /* Orange */
-  --sidebar: #0f172a; /* Darker blue for sidebar */
-  --sidebar-foreground: #e1e5e9;
-  --sidebar-primary: #fbbf24;
-  --sidebar-primary-foreground: #0a0e1a;
-  --sidebar-accent: #131820;
-  --sidebar-accent-foreground: #e1e5e9;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #fbbf24;
+  --chart-1: #2be6a1;
+  --chart-2: #22c55e;
+  --chart-3: #ff4d4f;
+  --chart-4: #3b82f6;
+  --chart-5: #f59e0b;
+  --buy: #2EE6A6;
+  --sell: #FF4D6D;
+  --sidebar: #0b0d12;
+  --sidebar-foreground: #e6e9ef;
+  --sidebar-primary: #7c6cff;
+  --sidebar-primary-foreground: #f5f4ff;
+  --sidebar-accent: #11141b;
+  --sidebar-accent-foreground: #e6e9ef;
+  --sidebar-border: #20242e;
+  --sidebar-ring: #7c6cff;
 }
 
 @theme inline {
@@ -129,6 +130,7 @@ html, body {
   }
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(1200px 600px at 50% -200px, #1a1f2a 0%, #0b0d12 60%);
   }
 }
 
@@ -173,7 +175,7 @@ html, body {
     }
     
     &::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.1);
+      background: transparent;
       border-radius: 4px;
     }
     
@@ -191,10 +193,20 @@ html, body {
     scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1);
   }
 
+  .panel-surface {
+    background: rgba(17, 20, 27, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .panel-surface-strong {
+    background: rgba(17, 20, 27, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
   /* Dark theme scrollbar */
   :root.dark .custom-scrollbar {
     &::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
+      background: transparent;
     }
     
     &::-webkit-scrollbar-thumb {
@@ -206,34 +218,34 @@ html, body {
     }
 
     /* Firefox dark mode */
-    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
   }
 
   /* 3D Neon Badge with Glassmorphism */
   .neon-badge {
     /* Glassmorphism base */
-    background: rgba(251, 191, 36, 0.15);
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(251, 191, 36, 0.3);
+    border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
     border-radius: 8px;
     
     /* 3D depth with subtle shadows */
     box-shadow: 
-      0 0 8px rgba(251, 191, 36, 0.15),
-      0 0 16px rgba(251, 191, 36, 0.08),
+      0 0 8px color-mix(in srgb, var(--primary) 30%, transparent),
+      0 0 16px color-mix(in srgb, var(--primary) 18%, transparent),
       0 8px 16px rgba(0, 0, 0, 0.3),
       inset 0 1px 2px rgba(255, 255, 255, 0.1),
       inset 0 -1px 2px rgba(0, 0, 0, 0.2);
     
     /* Text styling */
-    color: #fbbf24;
+    color: var(--primary);
     font-family: var(--font-mono);
     font-weight: 700;
     font-size: 1.25rem;
     letter-spacing: 0.05em;
     text-shadow: 
-      0 0 10px rgba(251, 191, 36, 0.8),
-      0 0 20px rgba(251, 191, 36, 0.4),
+      0 0 10px color-mix(in srgb, var(--primary) 70%, transparent),
+      0 0 20px color-mix(in srgb, var(--primary) 40%, transparent),
       0 1px 2px rgba(0, 0, 0, 0.5);
     
     /* Animation */
@@ -246,8 +258,8 @@ html, body {
   .neon-badge:hover {
     /* Enhanced glow on hover */
     box-shadow: 
-      0 0 15px rgba(251, 191, 36, 0.25),
-      0 0 30px rgba(251, 191, 36, 0.15),
+      0 0 15px color-mix(in srgb, var(--primary) 40%, transparent),
+      0 0 30px color-mix(in srgb, var(--primary) 25%, transparent),
       0 12px 20px rgba(0, 0, 0, 0.4),
       inset 0 1px 2px rgba(255, 255, 255, 0.15),
       inset 0 -1px 2px rgba(0, 0, 0, 0.2);
@@ -255,8 +267,8 @@ html, body {
     /* Slight scale and enhanced text glow */
     transform: scale(1.05);
     text-shadow: 
-      0 0 15px rgba(251, 191, 36, 1),
-      0 0 30px rgba(251, 191, 36, 0.6),
+      0 0 15px color-mix(in srgb, var(--primary) 90%, transparent),
+      0 0 30px color-mix(in srgb, var(--primary) 60%, transparent),
       0 1px 2px rgba(0, 0, 0, 0.8);
   }
 
@@ -282,16 +294,16 @@ html, body {
   @keyframes neonPulse {
     0% {
       box-shadow: 
-        0 0 8px rgba(251, 191, 36, 0.15),
-        0 0 16px rgba(251, 191, 36, 0.08),
+        0 0 8px color-mix(in srgb, var(--primary) 30%, transparent),
+        0 0 16px color-mix(in srgb, var(--primary) 18%, transparent),
         0 8px 16px rgba(0, 0, 0, 0.3),
         inset 0 1px 2px rgba(255, 255, 255, 0.1),
         inset 0 -1px 2px rgba(0, 0, 0, 0.2);
     }
     100% {
       box-shadow: 
-        0 0 12px rgba(251, 191, 36, 0.2),
-        0 0 24px rgba(251, 191, 36, 0.12),
+        0 0 12px color-mix(in srgb, var(--primary) 35%, transparent),
+        0 0 24px color-mix(in srgb, var(--primary) 22%, transparent),
         0 8px 16px rgba(0, 0, 0, 0.3),
         inset 0 1px 2px rgba(255, 255, 255, 0.1),
         inset 0 -1px 2px rgba(0, 0, 0, 0.2);

@@ -95,6 +95,7 @@ export class TrendingAPI {
   private static readonly BIRDEYE_BASE_URL = 'https://public-api.birdeye.so/defi'
   private static readonly BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY_HOLDERS || '4f29660278dd44e3af7a0d5b01dca853'
   private static cache: { data: TrendingToken[]; expires: number } | null = null
+  private static trendingTokensCache: { tokens: TrendingToken[]; expires: number } | null = null
   private static trendingAddressesCache: { addresses: string[]; expires: number } | null = null
   private static tradersCache: Map<string, { data: BirdeyeTrader[]; expires: number }> = new Map()
   private static readonly CACHE_DURATION = 60 * 60 * 1000 // 1 hour for trending addresses
@@ -107,21 +108,25 @@ export class TrendingAPI {
     }
 
     try {
-      // Step 1: Get trending addresses from Birdeye (cached for 1 hour)
-      const trendingAddresses = await this.getTrendingAddresses()
-      
-      // Step 2: Get detailed token data from DexScreener for each address
-      const trendingTokens = await this.getTokenDataFromDexScreener(trendingAddresses)
+      // Step 1: Get trending tokens from Birdeye (cached for 1 hour)
+      const birdeyeTokens = await this.getTrendingTokensFromBirdeye()
 
-      // console.log(`Returned ${trendingTokens.length} trending tokens with DexScreener data`)
+      // Step 2: Get detailed token data from DexScreener for each address
+      const trendingTokens = birdeyeTokens.length > 0
+        ? await this.getTokenDataFromDexScreener(birdeyeTokens.map(token => token.address))
+        : []
+
+      const mergedTokens = trendingTokens.length > 0
+        ? this.mergeTrendingTokens(birdeyeTokens, trendingTokens)
+        : birdeyeTokens
 
       // Cache the final results for 1 minute (reduced API calls)
       this.cache = {
-        data: trendingTokens,
+        data: mergedTokens,
         expires: Date.now() + this.TOKEN_DATA_CACHE_DURATION
       }
 
-      return trendingTokens
+      return mergedTokens
 
     } catch (error) {
       console.error('Failed to fetch trending tokens:', error)
@@ -136,13 +141,23 @@ export class TrendingAPI {
       return this.trendingAddressesCache.addresses
     }
 
+    const tokens = await this.getTrendingTokensFromBirdeye()
+    return tokens.map(token => token.address)
+  }
+
+  private static async getTrendingTokensFromBirdeye(): Promise<TrendingToken[]> {
+    if (this.trendingTokensCache && this.trendingTokensCache.expires > Date.now()) {
+      return this.trendingTokensCache.tokens
+    }
+
     try {
       // Use retry logic with exponential backoff
-      const addresses = await retryWithBackoff(async () => {
-        const response = await fetch(`${this.BIRDEYE_BASE_URL}/token_trending?limit=20`, {
+      const tokens = await retryWithBackoff(async () => {
+        const response = await fetch(`${this.BIRDEYE_BASE_URL}/token_trending?limit=20&network=solana`, {
           headers: {
             'Accept': 'application/json',
             'X-API-KEY': this.BIRDEYE_API_KEY,
+            'x-chain': 'solana',
           }
         })
 
@@ -153,25 +168,21 @@ export class TrendingAPI {
           if (response.status === 429) {
             console.log('Rate limit hit - using cached data or fallback')
             // Return cached data if available, even if expired
-            if (this.trendingAddressesCache) {
+            if (this.trendingTokensCache) {
               // Extend cache to reduce rate limit pressure
-              this.trendingAddressesCache.expires = Date.now() + 30 * 60 * 1000 // 30 minutes
-              return this.trendingAddressesCache.addresses
+              this.trendingTokensCache.expires = Date.now() + 30 * 60 * 1000 // 30 minutes
+              return this.trendingTokensCache.tokens
             }
-            // If no cache, return fallback addresses and cache them
-            const fallbackAddresses = [
-              'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-              'So11111111111111111111111111111111111111112',  // SOL
-              'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',  // USDT
-              'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', // BONK
-              'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm'  // WIF
-            ]
-            // Cache fallback addresses for 30 minutes to avoid repeated rate limit hits
-            this.trendingAddressesCache = {
-              addresses: fallbackAddresses,
+            const fallbackTokens = await this.getFallbackTrendingTokens()
+            this.trendingTokensCache = {
+              tokens: fallbackTokens,
               expires: Date.now() + 30 * 60 * 1000 // 30 minutes
             }
-            return fallbackAddresses
+            this.trendingAddressesCache = {
+              addresses: fallbackTokens.map(token => token.address),
+              expires: Date.now() + 30 * 60 * 1000 // 30 minutes
+            }
+            return fallbackTokens
           }
 
           // Create error with status for retry logic
@@ -190,26 +201,52 @@ export class TrendingAPI {
 
         return data.data.tokens
           .slice(0, 20)
-          .map(token => token.address)
+          .map((token, index) => ({
+            address: token.address,
+            name: token.name,
+            symbol: token.symbol,
+            image: token.logoURI || this.getTokenImageFallback(token.symbol),
+            price: token.price,
+            priceChange24h: token.price24hChangePercent,
+            volume24h: token.volume24hUSD,
+            marketCap: token.marketcap,
+            network: 'solana',
+            rank: token.rank || index + 1
+          }))
 
       }, { maxRetries: 2, baseDelay: 1000, maxDelay: 5000 })
 
-      // Cache trending addresses for 1 hour
-      this.trendingAddressesCache = {
-        addresses,
+      this.trendingTokensCache = {
+        tokens,
         expires: Date.now() + this.CACHE_DURATION
       }
 
-      return addresses
+      // Cache trending addresses for 1 hour
+      this.trendingAddressesCache = {
+        addresses: tokens.map(token => token.address),
+        expires: Date.now() + this.CACHE_DURATION
+      }
+
+      return tokens
 
     } catch (error) {
       console.error('Failed to fetch trending addresses from Birdeye after retries:', error)
       // Return fallback addresses if available
-      if (this.trendingAddressesCache) {
-        return this.trendingAddressesCache.addresses
+      if (this.trendingTokensCache) {
+        return this.trendingTokensCache.tokens
       }
       throw error
     }
+  }
+
+  private static mergeTrendingTokens(primary: TrendingToken[], overrides: TrendingToken[]): TrendingToken[] {
+    if (overrides.length === 0) return primary
+
+    const overridesMap = new Map(
+      overrides.map(token => [token.address.toLowerCase(), token])
+    )
+
+    return primary.map(token => overridesMap.get(token.address.toLowerCase()) || token)
   }
 
   // Step 2: Get detailed token data from DexScreener for trending addresses

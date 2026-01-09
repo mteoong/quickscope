@@ -57,7 +57,7 @@ export const mockSelectedToken: TokenSummary = {
   id: "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
   name: "Pudgy Penguins",
   symbol: "PENGU",
-  logoUrl: "/pengu-token.png",
+  logoUrl: "/placeholder.svg",
   network: "SOL",
   priceUsd: 0.0356676,
   change24hPct: 12.85,

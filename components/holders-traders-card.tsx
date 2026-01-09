@@ -7,6 +7,7 @@ import { TokenDataService } from "@/lib/token-data-service"
 import type { TokenHolder, TraderData, TokenTransaction } from "@/lib/types"
 import { BirdeyeAPI } from "@/lib/apis/birdeye"
 import { debounce } from "@/lib/utils/api-utils"
+import { VolumeMarketCapCharts } from "@/components/volume-marketcap-charts"
 
 interface HoldersTradersCardProps {
   tokenAddress?: string
@@ -41,16 +42,26 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
     setIsLoadingTransactions(true)
     try {
       const rawTransactions = await BirdeyeAPI.getTokenTransactions(tokenAddr, 30)
-      setTransactions(rawTransactions.map((tx: any) => ({
-        type: (tx.tx_type || tx.side || 'buy').toUpperCase(),
-        amount: tx.to?.ui_amount || tx.volume || 0,
-        pricePerToken: tx.to?.price || tx.price_pair || 0,
-        totalValue: tx.volume_usd || 0,
-        trader: tx.owner || 'Unknown',
-        txSignature: tx.tx_hash || `mock-${Date.now()}`,
-        time: tx.block_unix_time || Date.now() / 1000,
-        isRealTime: false
-      })))
+      const tokenAddressLower = tokenAddr.toLowerCase()
+      setTransactions(rawTransactions.map((tx: any) => {
+        const fromToken = tx.from?.address?.toLowerCase?.() === tokenAddressLower
+        const toToken = tx.to?.address?.toLowerCase?.() === tokenAddressLower
+        const tokenSide = fromToken ? tx.from : toToken ? tx.to : null
+        const amount = tokenSide?.ui_amount ?? tx.volume ?? 0
+        const pricePerToken = tokenSide?.price ?? (tx.volume && tx.volume_usd ? tx.volume_usd / tx.volume : 0)
+        const usdValue = tx.volume_usd ?? amount * pricePerToken
+
+        return {
+          type: (tx.tx_type || tx.side || 'buy').toUpperCase(),
+          amount,
+          pricePerToken,
+          usdValue,
+          trader: tx.owner || 'Unknown',
+          txSignature: tx.tx_hash || `mock-${Date.now()}`,
+          time: tx.block_unix_time || Date.now() / 1000,
+          isRealTime: false
+        }
+      }))
     } catch (error) {
       console.error('[Transactions] Failed to fetch transactions:', error)
       setTransactions([])
@@ -153,24 +164,32 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
 
   }, [tokenAddress, network, debouncedFetchHolders])
 
-  // Update time every second for live time calculations
+  // Update time every second only while on transactions tab
   useEffect(() => {
+    if (activeTab !== "transactions") return
     const interval = setInterval(() => {
       setCurrentTime(Date.now())
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [activeTab])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
-  const formatValue = (value: number) => {
+  const formatUsdValue = (value: number) => {
     const safeValue = Number(value ?? 0)
     if (safeValue >= 1000000) return `$${(safeValue / 1000000).toFixed(1)}M`
     if (safeValue >= 1000) return `$${(safeValue / 1000).toFixed(1)}K`
-    return `$${safeValue.toFixed(0)}`
+    return `$${safeValue.toFixed(2)}`
+  }
+
+  const formatTokenAmount = (value: number) => {
+    const safeValue = Number(value ?? 0)
+    if (safeValue >= 1000000) return `${(safeValue / 1000000).toFixed(2)}M`
+    if (safeValue >= 1000) return `${(safeValue / 1000).toFixed(2)}K`
+    return safeValue.toFixed(4)
   }
 
   const formatAddress = (address: string) => {
@@ -179,19 +198,40 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
   }
 
   return (
-    <div className="h-full bg-card text-card-foreground rounded-sm border shadow-sm flex flex-col overflow-hidden">
+    <div className="h-full text-card-foreground flex flex-col overflow-hidden">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
-        <div className="flex-shrink-0 p-3 pb-1">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="traders">Traders</TabsTrigger>
-            <TabsTrigger value="holders">Holders</TabsTrigger>
+        <div className="flex-shrink-0 px-2 pb-2 border-b border-border/50">
+          <TabsList className="inline-flex h-7 w-auto gap-4 bg-transparent border-0 p-0">
+            <TabsTrigger
+              value="transactions"
+              className="h-7 px-0 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground rounded-none"
+            >
+              Transactions
+            </TabsTrigger>
+            <TabsTrigger
+              value="traders"
+              className="h-7 px-0 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground rounded-none"
+            >
+              Traders
+            </TabsTrigger>
+            <TabsTrigger
+              value="holders"
+              className="h-7 px-0 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground rounded-none"
+            >
+              Holders
+            </TabsTrigger>
+            <TabsTrigger
+              value="volume"
+              className="h-7 px-0 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground rounded-none"
+            >
+              Charts
+            </TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="transactions" className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="flex-1 space-y-0.5 overflow-y-auto overflow-x-auto p-3 pr-2 custom-scrollbar min-h-0 min-w-0">
-            <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground font-medium pb-1 border-b border-border min-w-full">
+          <div className="flex-1 space-y-0 overflow-y-auto overflow-x-auto px-1 pb-1 pt-0 pr-1 custom-scrollbar min-h-0 min-w-0">
+            <div className="grid grid-cols-7 gap-2 text-[11px] text-muted-foreground font-medium pb-1 border-b border-border/60 min-w-full bg-[#0f1218] px-2 py-2">
               <div>TIME</div>
               <div>TYPE</div>
               <div>AMOUNT</div>
@@ -217,17 +257,22 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                                  `${Math.round(timeAgo/86400)}d`
 
                 const isBuy = tx.type === 'BUY'
-                const colorClass = isBuy ? 'text-green-400' : 'text-red-400'
+                const colorClass = isBuy ? 'text-[color:var(--buy)]' : 'text-[color:var(--sell)]'
                 
                 return (
-                  <div key={uniqueKey} className="grid grid-cols-7 gap-2 text-xs py-1 hover:bg-muted/50 rounded-sm">
+                  <div
+                    key={uniqueKey}
+                    className={`grid grid-cols-7 gap-2 px-2 text-xs py-2 border-b border-border/30 ${
+                      index % 2 === 0 ? "bg-[#0c0f14]" : "bg-[#0e1218]"
+                    } hover:bg-[#141923]`}
+                  >
                     <div className="text-muted-foreground">{timeString} ago</div>
                     <div className={`font-medium ${colorClass}`}>
                       {tx.type}
                     </div>
-                    <div className={`font-medium ${colorClass}`}>{formatValue(tx.amount)}</div>
-                    <div className={`font-medium ${colorClass}`}>${Number(tx.pricePerToken ?? 0).toFixed(4)}</div>
-                    <div className={`font-medium ${colorClass}`}>${Number(tx.usdValue ?? 0).toFixed(2)}</div>
+                    <div className="font-medium text-muted-foreground">{formatTokenAmount(tx.amount)}</div>
+                    <div className="font-medium text-muted-foreground">${Number(tx.pricePerToken ?? 0).toFixed(4)}</div>
+                    <div className={`font-medium ${colorClass}`}>{formatUsdValue(tx.usdValue ?? 0)}</div>
                     <div className="flex items-center gap-1">
                       <span className="font-mono text-xs">{formatAddress(tx.trader)}</span>
                       <Copy
@@ -257,8 +302,8 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
         </TabsContent>
 
         <TabsContent value="traders" className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="flex-1 space-y-0.5 overflow-y-auto p-3 pr-2 custom-scrollbar min-h-0">
-            <div className="grid grid-cols-5 text-xs text-muted-foreground font-medium pb-1 border-b border-border" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1fr auto' }}>
+          <div className="flex-1 space-y-0 overflow-y-auto px-1 pb-1 pt-0 pr-1 custom-scrollbar min-h-0">
+            <div className="grid grid-cols-5 text-[11px] text-muted-foreground font-medium pb-1 border-b border-border/60 bg-[#0f1218] px-2 py-2" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1fr auto' }}>
               <div>TRADER</div>
               <div>BUY VOL</div>
               <div>SELL VOL</div>
@@ -275,7 +320,13 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                 const uniqueKey = `trader-${trader.trader}-${trader.rank}-${index}`
                 
                 return (
-                  <div key={uniqueKey} className="grid grid-cols-5 text-xs py-1 hover:bg-muted/50 rounded-sm" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1fr auto' }}>
+                  <div
+                    key={uniqueKey}
+                    className={`grid grid-cols-5 px-2 text-xs py-2 border-b border-border/30 ${
+                      index % 2 === 0 ? "bg-[#0c0f14]" : "bg-[#0e1218]"
+                    } hover:bg-[#141923]`}
+                    style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1fr auto' }}
+                  >
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">#{trader.rank}</span>
                       <span className="font-mono text-xs">{formatAddress(trader.trader)}</span>
@@ -285,13 +336,13 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                       />
                     </div>
                     <div>
-                      <div className="font-medium text-green-400">{trader.bought}</div>
+                      <div className="font-medium text-[color:var(--buy)]">{trader.bought}</div>
                       <div className="text-muted-foreground text-xs">
                         {trader.boughtTx}
                       </div>
                     </div>
                     <div>
-                      <div className="font-medium text-red-400">{trader.sold}</div>
+                      <div className="font-medium text-[color:var(--sell)]">{trader.sold}</div>
                       <div className="text-muted-foreground text-xs">
                         {trader.soldTx}
                       </div>
@@ -314,10 +365,10 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
         </TabsContent>
 
         <TabsContent value="holders" className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="flex-1 space-y-0.5 overflow-y-auto p-3 custom-scrollbar min-h-0">
-            <div className="grid text-xs text-muted-foreground font-medium pb-1 border-b border-border" style={{ gridTemplateColumns: '2.5fr 100px 1.8fr 1fr' }}>
+          <div className="flex-1 space-y-0 overflow-y-auto px-1 pb-1 pt-0 custom-scrollbar min-h-0">
+            <div className="grid text-[11px] text-muted-foreground font-medium pb-1 border-b border-border/60 bg-[#0f1218] px-2 py-2" style={{ gridTemplateColumns: '1.8fr 0.9fr 1.7fr 1fr' }}>
               <div># Address</div>
-              <div>%</div>
+              <div className="text-center">%</div>
               <div>Amount</div>
               <div className="text-right">Value (USD)</div>
             </div>
@@ -330,7 +381,13 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                 const uniqueKey = `holder-${holder.address}-${index}`
                 
                 return (
-                  <div key={uniqueKey} className="grid text-xs py-2 hover:bg-muted/50 rounded-sm" style={{ gridTemplateColumns: '2.5fr 100px 1.8fr 1fr' }}>
+                  <div
+                    key={uniqueKey}
+                    className={`grid px-2 text-xs py-2 border-b border-border/30 ${
+                      index % 2 === 0 ? "bg-[#0c0f14]" : "bg-[#0e1218]"
+                    } hover:bg-[#141923]`}
+                    style={{ gridTemplateColumns: '1.8fr 0.9fr 1.7fr 1fr' }}
+                  >
                     {/* # Address Column */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-muted-foreground">{index + 1}</span>
@@ -342,14 +399,14 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                     </div>
                     
                     {/* % Column */}
-                    <div className="font-medium">{Number(holder.percentage ?? 0).toFixed(2)}%</div>
+                    <div className="font-medium text-center pr-2">{Number(holder.percentage ?? 0).toFixed(2)}%</div>
                     
                     {/* Amount Column with Progress Bar */}
                     <div className="space-y-1">
-                      <div className="font-medium">{holder.amount}</div>
+                      <div className="font-medium text-[color:var(--primary)]">{holder.amount}</div>
                       <div className="w-full bg-muted rounded-full h-1">
                         <div 
-                          className="bg-yellow-400 h-1 rounded-full transition-all duration-300" 
+                          className="bg-[color:var(--primary)] h-1 rounded-full transition-all duration-300" 
                           style={{ width: `${Math.min(holder.percentage, 100)}%` }}
                         />
                       </div>
@@ -370,6 +427,16 @@ export function HoldersTradersCard({ tokenAddress, network = "solana" }: Holders
                 {tokenAddress ? 'No holder data available' : 'Select a token to view holders'}
               </div>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="volume" className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto p-3 custom-scrollbar min-h-0">
+            <VolumeMarketCapCharts
+              tokenAddress={tokenAddress || ''}
+              layout="split"
+              className="h-full"
+            />
           </div>
         </TabsContent>
 

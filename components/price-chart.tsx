@@ -21,7 +21,7 @@ export function PriceChart({
   // If addressType is provided, use the address directly
   if (addressType) {
     return (
-      <div className={`bg-card border border-border rounded-sm p-2 h-full flex flex-col ${className}`}>
+      <div className={`bg-background border-0 p-2 h-full flex flex-col ${className}`}>
         <div className="flex-1">
           <GeckoTerminalEmbed 
             address={tokenAddress}
@@ -50,7 +50,7 @@ export function PriceChart({
   }
 
   return (
-    <div className={`bg-card border border-border rounded-sm p-2 h-full flex flex-col ${className}`}>
+    <div className={`bg-background border-0 p-2 h-full flex flex-col ${className}`}>
       <div className="flex-1">
         <GeckoTerminalEmbed 
           poolAddress={getPoolAddress()}

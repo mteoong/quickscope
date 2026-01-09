@@ -1,6 +1,5 @@
 "use client"
 
-import { Card } from "@/components/ui/card"
 import { Copy } from "lucide-react"
 import type { TokenData } from "@/lib/types"
 
@@ -51,7 +50,7 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
   }
 
   return (
-    <Card className="p-3 space-y-3">
+    <div className="p-3 space-y-3">
       {/* Basic Token Info */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
@@ -92,7 +91,7 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
       </div>
 
       {/* Separator */}
-      <div className="border-t border-border"></div>
+      <div className="border-t border-border/30"></div>
 
       {/* Pool Information */}
       {primaryPool ? (
@@ -197,6 +196,6 @@ export function TokenInfoCard({ tokenData, selectedTokenAddress, selectedTokenSy
           </div>
         </div>
       )}
-    </Card>
+    </div>
   )
 }
